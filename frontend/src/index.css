@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans bg-cream text-ink-light antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  button {
+    border: none;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  img {
+    max-width: 100%;
+    display: block;
+  }
+}
+
+/* ── Custom scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #faf9f6;
+}
+::-webkit-scrollbar-thumb {
+  background: #e8e6e0;
+  border-radius: 3px;
+}
+
+/* ── Hide scrollbar utility ────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Skeleton shimmer ──────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f5f4f0 25%,
+    #e8e6e0 50%,
+    #f5f4f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+/* ── Quill editor overrides ────────────────────────────────── */
+.ql-toolbar.ql-snow {
+  border: 1px solid #e8e6e0 !important;
+  border-bottom: none !important;
+  border-radius: 4px 4px 0 0;
+}
+
+.ql-container.ql-snow {
+  border: 1px solid #e8e6e0 !important;
+  border-radius: 0 0 4px 4px;
+  font-family: 'Lora', Georgia, serif;
+  font-size: 18px;
+  min-height: 400px;
+}
+
+.ql-editor {
+  padding: 24px !important;
+  line-height: 1.8;
+}
+
+.ql-editor.ql-blank::before {
+  color: #757575 !important;
+  font-style: italic !important;
+}
