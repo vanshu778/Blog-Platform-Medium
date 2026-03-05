@@ -6,11 +6,15 @@ import {
   getProfile,
   toggleFollow,
   updateProfile,
+  toggleBookmark,
+  getBookmarks,
 } from "../controllers/user.controller.js"
 import { protect } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
 
+router.get("/bookmarks", protect, getBookmarks)
+router.post("/bookmarks/:postId", protect, toggleBookmark)
 router.get("/:username", getProfile)
 router.post("/:id/follow", protect, toggleFollow)
 router.put("/profile/update", protect, updateProfile)

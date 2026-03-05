@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
@@ -167,8 +167,15 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Follow button */}
-            {!isOwnProfile && user && (
+            {/* Follow / Edit profile button */}
+            {isOwnProfile ? (
+              <Link
+                to="/settings"
+                className="block w-full text-center text-sm py-2 rounded-full border border-border text-ink-muted hover:border-ink-muted transition-all"
+              >
+                Edit profile
+              </Link>
+            ) : user ? (
               <button
                 onClick={handleFollow}
                 className={`w-full text-sm py-2 rounded-full border transition-all ${
@@ -179,7 +186,7 @@ export default function ProfilePage() {
               >
                 {following ? 'Following' : 'Follow'}
               </button>
-            )}
+            ) : null}
           </div>
         </aside>
       </div>

@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import ClapButton from '../components/blog/ClapButton'
+import CommentSection from '../components/blog/CommentSection'
+import BookmarkButton from '../components/blog/BookmarkButton'
 
 export default function PostPage() {
   const { slug } = useParams()
@@ -159,12 +161,20 @@ export default function PostPage() {
 
         <div>
           {isOwnPost ? (
-            <button
-              onClick={handleDelete}
-              className="text-sm text-danger border border-danger/30 px-4 py-1.5 rounded-full hover:bg-danger hover:text-white transition-all"
-            >
-              Delete
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/edit/${post.slug}`}
+                className="text-sm text-ink-light border border-border px-4 py-1.5 rounded-full hover:bg-surface-alt transition-all"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                className="text-sm text-danger border border-danger/30 px-4 py-1.5 rounded-full hover:bg-danger hover:text-white transition-all"
+              >
+                Delete
+              </button>
+            </div>
           ) : user ? (
             <button
               onClick={handleFollow}
@@ -202,12 +212,16 @@ export default function PostPage() {
           initialClaps={post.claps?.length || 0}
           initialClapped={userClapped}
         />
-        <span className="text-sm text-ink-muted">
+        <span className="text-sm text-ink-muted flex-1">
           {post.claps?.length > 0
             ? `${post.claps.length} ${post.claps.length === 1 ? 'person' : 'people'} clapped`
             : 'Be the first to clap'}
         </span>
+        <BookmarkButton postId={post._id} />
       </div>
+
+      {/* Comments */}
+      <CommentSection postId={post._id} />
 
       {/* Author bio section */}
       <div className="flex items-start gap-4 bg-surface-alt rounded-lg p-6">

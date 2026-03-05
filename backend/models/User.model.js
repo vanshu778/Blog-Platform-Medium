@@ -60,6 +60,14 @@ const userSchema = new Schema(
         ref: "User",
       },
     ],
+
+    // Bookmarked posts
+    bookmarks: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Post",
+      },
+    ],
   },
   {
     timestamps: true, // adds createdAt and updatedAt automatically

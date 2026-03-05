@@ -77,6 +77,60 @@ export const toggleFollow = async (req, res) => {
   }
 }
 
+// ─── toggleBookmark ───────────────────────────────────────────────────────────
+// @route  POST /api/users/bookmarks/:postId
+// @access Private (protect)
+export const toggleBookmark = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+    const postId = req.params.postId
+
+    // Verify post exists
+    const postExists = await Post.findById(postId)
+    if (!postExists) {
+      return res.status(404).json({ message: "Post not found" })
+    }
+
+    const isBookmarked = user.bookmarks.some(
+      (id) => id.toString() === postId
+    )
+
+    if (isBookmarked) {
+      user.bookmarks = user.bookmarks.filter(
+        (id) => id.toString() !== postId
+      )
+    } else {
+      user.bookmarks.push(postId)
+    }
+
+    await user.save()
+
+    res.status(200).json({
+      bookmarked: !isBookmarked,
+      bookmarks: user.bookmarks,
+    })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
+
+// ─── getBookmarks ─────────────────────────────────────────────────────────────
+// @route  GET /api/users/bookmarks
+// @access Private (protect)
+export const getBookmarks = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: "bookmarks",
+      populate: { path: "author", select: "name username avatar" },
+      options: { sort: { createdAt: -1 } },
+    })
+
+    res.status(200).json(user.bookmarks)
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
+
 // ─── updateProfile ────────────────────────────────────────────────────────────
 // @route  PUT /api/users/profile/update
 // @access Private (protect)

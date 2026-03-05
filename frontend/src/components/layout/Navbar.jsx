@@ -7,6 +7,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const dropdownRef = useRef(null)
 
   const avatarUrl =
@@ -29,6 +30,14 @@ export default function Navbar() {
     navigate('/')
   }
 
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }
+
   return (
     <nav className="sticky top-0 z-50 h-[64px] border-b border-border bg-cream/95 backdrop-blur-xl">
       <div className="max-w-[1192px] mx-auto h-full flex items-center justify-between px-6">
@@ -39,6 +48,33 @@ export default function Navbar() {
             Inkwell
           </span>
         </Link>
+
+        {/* Search bar */}
+        <form onSubmit={handleSearch} className="hidden sm:flex items-center flex-1 max-w-[320px] mx-4">
+          <div className="relative w-full">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search stories..."
+              className="w-full pl-9 pr-3 py-2 text-sm bg-surface-alt border border-transparent rounded-full focus:outline-none focus:border-border focus:bg-surface text-ink placeholder:text-ink-muted transition-all"
+            />
+          </div>
+        </form>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
@@ -80,6 +116,20 @@ export default function Navbar() {
                       className="block px-4 py-2.5 text-sm text-ink-light hover:bg-surface-alt transition-colors"
                     >
                       New Story
+                    </Link>
+                    <Link
+                      to="/bookmarks"
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-ink-light hover:bg-surface-alt transition-colors"
+                    >
+                      Reading List
+                    </Link>
+                    <Link
+                      to="/settings"
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-ink-light hover:bg-surface-alt transition-colors"
+                    >
+                      Settings
                     </Link>
                     <hr className="my-1 border-border" />
                     <button

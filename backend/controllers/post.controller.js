@@ -1,7 +1,59 @@
 // controllers/post.controller.js
-// Handles CRUD operations for blog posts, feed, and clap toggle
+// Handles CRUD operations for blog posts, feed, clap toggle, and search
 
 import Post from "../models/Post.model.js"
+import User from "../models/User.model.js"
+
+// ─── searchPosts ──────────────────────────────────────────────────────────────
+// @route  GET /api/posts/search?q=keyword
+// @access Public
+export const searchPosts = async (req, res) => {
+  try {
+    const { q, page = 1, limit = 10 } = req.query
+
+    if (!q || !q.trim()) {
+      return res.status(400).json({ message: "Search query is required" })
+    }
+
+    const regex = new RegExp(q.trim(), "i")
+
+    const filter = {
+      published: true,
+      $or: [
+        { title: regex },
+        { excerpt: regex },
+        { tags: regex },
+      ],
+    }
+
+    const skip = (Number(page) - 1) * Number(limit)
+
+    const [posts, total] = await Promise.all([
+      Post.find(filter)
+        .populate("author", "name username avatar")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      Post.countDocuments(filter),
+    ])
+
+    // Also search users
+    const users = await User.find({
+      $or: [{ name: regex }, { username: regex }],
+    })
+      .select("name username avatar bio")
+      .limit(5)
+
+    res.status(200).json({
+      posts,
+      users,
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
 
 // ─── getFeed ──────────────────────────────────────────────────────────────────
 // @route  GET /api/posts
