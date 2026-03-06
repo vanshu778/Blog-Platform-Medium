@@ -1,4 +1,4 @@
-// Post routes — feed, single post, CRUD, clap, search, and user posts
+// Post routes — feed, single post, CRUD, reactions, search, and user posts
 
 import express from "express"
 import {
@@ -22,7 +22,6 @@ router.get("/:slug", getPost)
 router.post("/", protect, createPost)
 router.put("/:id", protect, updatePost)
 router.delete("/:id", protect, deletePost)
-router.post("/:id/clap", protect, reactPost)
 router.post("/:id/react", protect, reactPost)
 
 export default router

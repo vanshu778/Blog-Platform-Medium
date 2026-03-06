@@ -22,8 +22,8 @@ export default function SearchPage() {
         setPosts(res.data.posts)
         setUsers(res.data.users)
         setTotal(res.data.total)
-      } catch (err) {
-        console.error(err)
+      } catch {
+        // Search failed — silently fail
       } finally {
         setLoading(false)
       }

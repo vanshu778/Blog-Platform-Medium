@@ -11,8 +11,8 @@ export default function BookmarksPage() {
       try {
         const res = await api.get('/users/bookmarks')
         setBookmarks(res.data)
-      } catch (err) {
-        console.error(err)
+      } catch {
+        // Failed to load bookmarks
       } finally {
         setLoading(false)
       }

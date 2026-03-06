@@ -1,4 +1,4 @@
-// Handles CRUD for blog posts, feed, clap toggle, search, and user posts
+// Handles CRUD for blog posts, feed, reactions, search, and user posts
 
 import Post from "../models/Post.model.js"
 import User from "../models/User.model.js"
@@ -173,12 +173,6 @@ export const reactPost = async (req, res, next) => {
       // Add the reaction
       post.reactions[type].push(req.user._id)
 
-      // Also keep legacy claps array in sync for backward compatibility
-      if (type === "clap") {
-        const alreadyClapped = post.claps.map((c) => c.toString()).includes(userId)
-        if (!alreadyClapped) post.claps.push(req.user._id)
-      }
-
       // Send notification if reacting to someone else's post
       if (post.author.toString() !== userId) {
         await Notification.create({
@@ -188,11 +182,6 @@ export const reactPost = async (req, res, next) => {
           post: post._id,
         })
       }
-    }
-
-    // Remove from legacy claps if un-clapping
-    if (type === "clap" && alreadyReacted) {
-      post.claps = post.claps.filter((c) => c.toString() !== userId)
     }
 
     await post.save()
@@ -212,8 +201,6 @@ export const reactPost = async (req, res, next) => {
     res.status(200).json({
       reactions: reactionSummary,
       totalReactions,
-      // Legacy field for backward compat
-      claps: post.claps.length,
     })
   } catch (err) {
     next(err)

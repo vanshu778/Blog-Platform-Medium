@@ -1,4 +1,4 @@
-// Notification model — stores follow, clap, and comment notifications
+// Notification model — stores follow, reaction, and comment notifications
 import mongoose from "mongoose"
 
 const { Schema, model } = mongoose
@@ -19,7 +19,7 @@ const notificationSchema = new Schema(
 
     type: {
       type: String,
-      enum: ["follow", "clap", "comment", "reaction"],
+      enum: ["follow", "reaction", "comment"],
       required: true,
     },
 

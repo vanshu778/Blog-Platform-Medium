@@ -51,14 +51,6 @@ const postSchema = new Schema(
       },
     ],
 
-    // Users who clapped for this post
-    claps: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-
     // Emoji reactions — each key is a reaction type, value is array of user IDs
     reactions: {
       like: [{ type: Schema.Types.ObjectId, ref: "User" }],
@@ -87,8 +79,8 @@ const postSchema = new Schema(
 
 // ─── Pre-save Hook ─────────────────────────────────────────────────────────────
 postSchema.pre("save", function () {
-  // 1. Auto-generate slug from title whenever title changes
-  if (this.isModified("title")) {
+  // 1. Auto-generate slug from title only on creation (not edits)
+  if (this.isNew && this.isModified("title")) {
     this.slug =
       slugify(this.title, { lower: true, strict: true }) + "-" + Date.now()
   }

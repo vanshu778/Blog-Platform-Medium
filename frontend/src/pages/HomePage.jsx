@@ -40,8 +40,8 @@ export default function HomePage() {
           setPage((p) => p + 1)
         }
         setHasMore(newPosts.length === 10)
-      } catch (err) {
-        console.error(err)
+      } catch {
+        // Network error — silently fail, user sees empty state
       } finally {
         setLoading(false)
       }

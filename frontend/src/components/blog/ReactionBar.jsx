@@ -14,7 +14,6 @@ const REACTIONS = [
 
 /**
  * Build initial state from post data.
- * Works with both new `reactions` map and legacy `claps` array.
  */
 function buildInitialState(post, userId) {
   const state = {}
@@ -26,17 +25,6 @@ function buildInitialState(post, userId) {
       reacted: userId
         ? arr.some((id) => (typeof id === 'object' ? id._id : id) === userId)
         : false,
-    }
-  }
-
-  // Fallback: if no reactions exist at all, populate clap from legacy claps array
-  const totalFromReactions = Object.values(state).reduce((s, v) => s + v.count, 0)
-  if (totalFromReactions === 0 && post.claps?.length > 0) {
-    state.clap.count = post.claps.length
-    if (userId) {
-      state.clap.reacted = post.claps.some((id) =>
-        (typeof id === 'object' ? id._id : id) === userId
-      )
     }
   }
 
@@ -185,7 +173,7 @@ export default function ReactionBar({ post }) {
 }
 
 /**
- * Compact version for PostCard — just shows emoji summary, no interaction
+ * Compact version for PostCard — shows emoji summary, no interaction
  */
 export function ReactionSummary({ post }) {
   const reactions = post.reactions || {}
@@ -198,22 +186,9 @@ export function ReactionSummary({ post }) {
     .filter((e) => e.count > 0 && e.emoji)
     .sort((a, b) => b.count - a.count)
 
-  // Fallback to legacy claps
-  const totalReactions = entries.reduce((s, e) => s + e.count, 0)
-  const legacyClaps = post.claps?.length || 0
-
-  if (totalReactions === 0 && legacyClaps === 0) return null
-
-  if (totalReactions === 0 && legacyClaps > 0) {
-    return (
-      <>
-        <span>·</span>
-        <span>👏 {legacyClaps}</span>
-      </>
-    )
-  }
-
   const total = entries.reduce((s, e) => s + e.count, 0)
+  if (total === 0) return null
+
   const topEmojis = entries.slice(0, 3)
 
   return (

@@ -22,7 +22,7 @@ export default function CommentSection({ postId }) {
       const res = await api.get(`/comments/${postId}`)
       setComments(res.data.comments || [])
     } catch {
-      console.error('Failed to load comments')
+      // Failed to load comments
     } finally {
       setLoading(false)
     }
