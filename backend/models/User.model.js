@@ -23,7 +23,7 @@ const userSchema = new Schema(
 
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: false,
       minlength: [6, "Password must be at least 6 characters"],
     },
 
@@ -33,6 +33,12 @@ const userSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true,
+    },
+
+    // Google OAuth ID
+    googleId: {
+      type: String,
+      default: null,
     },
 
     // Profile details
@@ -76,8 +82,8 @@ const userSchema = new Schema(
 
 // ─── Pre-save Hook: Hash password before saving ───────────────────────────────
 userSchema.pre("save", async function () {
-  // Only hash if the password field was modified (or is new)
-  if (!this.isModified("password")) return
+  // Skip hashing for Google OAuth users (no password) or if password wasn't modified
+  if (!this.password || !this.isModified("password")) return
 
   const salt = await bcrypt.genSalt(12)
   this.password = await bcrypt.hash(this.password, salt)

@@ -1,7 +1,10 @@
 // Handles user registration, login, logout, token refresh, and current user
 
 import jwt from "jsonwebtoken"
+import { OAuth2Client } from "google-auth-library"
 import User from "../models/User.model.js"
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 // ─── Internal Helpers (NOT exported) ──────────────────────────────────────────
 
@@ -126,6 +129,66 @@ export const refresh = async (req, res, next) => {
     res.status(200).json({ accessToken: generateAccessToken(user._id) })
   } catch (err) {
     res.status(403).json({ message: "Invalid refresh token." })
+  }
+}
+
+// ─── googleAuth ───────────────────────────────────────────────────────────────
+export const googleAuth = async (req, res, next) => {
+  try {
+    const { token } = req.body
+
+    if (!token) {
+      return res.status(400).json({ message: "Google token is required" })
+    }
+
+    // Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    })
+
+    const payload = ticket.getPayload()
+    const { email, name, picture, sub: googleId } = payload
+
+    // Check if user already exists
+    let user = await User.findOne({ email })
+
+    if (!user) {
+      // Create new user from Google profile
+      const username = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "")
+
+      // Ensure username is unique
+      let finalUsername = username
+      const usernameExists = await User.findOne({ username: finalUsername })
+      if (usernameExists) {
+        finalUsername = `${username}${Date.now().toString(36)}`
+      }
+
+      user = await User.create({
+        name,
+        email,
+        username: finalUsername,
+        avatar: "",
+        googleId,
+        password: undefined,
+      })
+    }
+
+    setRefreshCookie(res, generateRefreshToken(user._id))
+
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar,
+        bio: user.bio,
+      },
+      accessToken: generateAccessToken(user._id),
+    })
+  } catch (err) {
+    next(err)
   }
 }
 
