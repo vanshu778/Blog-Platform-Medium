@@ -1,27 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
 
 export default function BookmarkButton({ postId }) {
-  const { user } = useAuth()
-  const [bookmarked, setBookmarked] = useState(false)
+  const { user, updateUser } = useAuth()
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (user) {
-      // Check if post is bookmarked by fetching user's bookmarks
-      api
-        .get('/users/bookmarks')
-        .then((res) => {
-          const isBookmarked = res.data.some(
-            (b) => (b._id || b) === postId
-          )
-          setBookmarked(isBookmarked)
-        })
-        .catch(() => {})
-    }
-  }, [user, postId])
+  // Check bookmarks from user state (no extra API call)
+  const bookmarked = user?.bookmarks?.some(
+    (b) => (typeof b === 'object' ? b._id : b) === postId
+  ) || false
 
   const handleToggle = async () => {
     if (!user) {
@@ -30,15 +19,13 @@ export default function BookmarkButton({ postId }) {
     }
 
     setLoading(true)
-    const prev = bookmarked
-    setBookmarked(!bookmarked)
 
     try {
       const res = await api.post(`/users/bookmarks/${postId}`)
-      setBookmarked(res.data.bookmarked)
+      // Update user bookmarks in AuthContext
+      updateUser({ bookmarks: res.data.bookmarks })
       toast.success(res.data.bookmarked ? 'Saved to reading list' : 'Removed from reading list')
     } catch {
-      setBookmarked(prev)
       toast.error('Something went wrong')
     } finally {
       setLoading(false)

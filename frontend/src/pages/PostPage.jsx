@@ -201,7 +201,7 @@ export default function PostPage() {
 
       {/* Post content */}
       <div
-        className="prose prose-inkwell max-w-none"
+        className="prose prose-medium max-w-none"
         dangerouslySetInnerHTML={{ __html: post.content }}
       />
 

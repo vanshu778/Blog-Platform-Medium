@@ -37,7 +37,7 @@ export default function RegisterPage() {
         password,
       })
       login(res.data)
-      toast.success(`Welcome to Inkwell, ${res.data.name}!`)
+      toast.success(`Welcome to Medium, ${res.data.user.name}!`)
       navigate('/')
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong')
@@ -54,13 +54,13 @@ export default function RegisterPage() {
           <Link to="/" className="inline-flex items-center gap-2">
             <span className="text-accent text-xl">✦</span>
             <span className="font-serif text-xl font-semibold text-ink">
-              Inkwell
+              Medium
             </span>
           </Link>
         </div>
 
         <h1 className="font-serif text-[32px] font-bold text-ink text-center mb-2">
-          Join Inkwell.
+          Join Medium.
         </h1>
         <p className="text-ink-muted text-center mb-8">
           Start reading &amp; writing stories that matter.
@@ -109,7 +109,7 @@ export default function RegisterPage() {
             />
             {username && (
               <p className="text-xs text-ink-muted mt-1">
-                inkwell.com/@{username}
+                medium.com/@{username}
               </p>
             )}
           </div>

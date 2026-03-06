@@ -45,7 +45,7 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-2">
           <span className="text-accent text-2xl leading-none">✦</span>
           <span className="font-serif text-[22px] font-semibold text-ink">
-            Inkwell
+            Medium
           </span>
         </Link>
 

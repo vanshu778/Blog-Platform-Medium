@@ -1,77 +1,24 @@
-// controllers/post.controller.js
-// Handles CRUD operations for blog posts, feed, clap toggle, and search
+// Handles CRUD for blog posts, feed, clap toggle, search, and user posts
 
 import Post from "../models/Post.model.js"
 import User from "../models/User.model.js"
-
-// ─── searchPosts ──────────────────────────────────────────────────────────────
-// @route  GET /api/posts/search?q=keyword
-// @access Public
-export const searchPosts = async (req, res) => {
-  try {
-    const { q, page = 1, limit = 10 } = req.query
-
-    if (!q || !q.trim()) {
-      return res.status(400).json({ message: "Search query is required" })
-    }
-
-    const regex = new RegExp(q.trim(), "i")
-
-    const filter = {
-      published: true,
-      $or: [
-        { title: regex },
-        { excerpt: regex },
-        { tags: regex },
-      ],
-    }
-
-    const skip = (Number(page) - 1) * Number(limit)
-
-    const [posts, total] = await Promise.all([
-      Post.find(filter)
-        .populate("author", "name username avatar")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      Post.countDocuments(filter),
-    ])
-
-    // Also search users
-    const users = await User.find({
-      $or: [{ name: regex }, { username: regex }],
-    })
-      .select("name username avatar bio")
-      .limit(5)
-
-    res.status(200).json({
-      posts,
-      users,
-      total,
-      pages: Math.ceil(total / Number(limit)),
-    })
-  } catch (err) {
-    res.status(500).json({ message: err.message })
-  }
-}
+import Comment from "../models/Comment.model.js"
+import Notification from "../models/Notification.model.js"
 
 // ─── getFeed ──────────────────────────────────────────────────────────────────
-// @route  GET /api/posts
-// @access Public (optionalAuth — personalized feed if logged in)
-export const getFeed = async (req, res) => {
+export const getFeed = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, tag } = req.query
 
-    // Base filter: only published posts
     const filter = { published: true }
 
-    // Filter by tag if provided
     if (tag) {
       filter.tags = tag.toLowerCase()
     }
 
-    // If user is logged in and follows people, show their posts + own posts
-    if (req.user && req.user.following.length > 0) {
+    // Show posts from followed users + self when logged in with followings,
+    // otherwise show all published posts
+    if (req.user && req.user.following && req.user.following.length > 0) {
       filter.author = { $in: [...req.user.following, req.user._id] }
     }
 
@@ -90,20 +37,19 @@ export const getFeed = async (req, res) => {
       posts,
       total,
       pages: Math.ceil(total / Number(limit)),
+      currentPage: Number(page),
     })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── getPost ──────────────────────────────────────────────────────────────────
-// @route  GET /api/posts/:slug
-// @access Public
-export const getPost = async (req, res) => {
+export const getPost = async (req, res, next) => {
   try {
     const post = await Post.findOne({ slug: req.params.slug }).populate(
       "author",
-      "name username avatar bio followers"
+      "name username avatar bio followers following"
     )
 
     if (!post) {
@@ -112,16 +58,18 @@ export const getPost = async (req, res) => {
 
     res.status(200).json(post)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── createPost ───────────────────────────────────────────────────────────────
-// @route  POST /api/posts
-// @access Private (protect)
-export const createPost = async (req, res) => {
+export const createPost = async (req, res, next) => {
   try {
     const { title, content, tags, coverImage } = req.body
+
+    if (!title || !content) {
+      return res.status(400).json({ message: "Title and content are required" })
+    }
 
     const post = await Post.create({
       title,
@@ -131,19 +79,16 @@ export const createPost = async (req, res) => {
       author: req.user._id,
     })
 
-    // Populate author before returning
     await post.populate("author", "name username avatar")
 
     res.status(201).json(post)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── updatePost ───────────────────────────────────────────────────────────────
-// @route  PUT /api/posts/:id
-// @access Private (protect, author only)
-export const updatePost = async (req, res) => {
+export const updatePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
 
@@ -151,33 +96,28 @@ export const updatePost = async (req, res) => {
       return res.status(404).json({ message: "Post not found" })
     }
 
-    // Only the original author can update
     if (post.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" })
     }
 
     const { title, content, tags, coverImage } = req.body
 
-    // Update only provided fields
     if (title !== undefined) post.title = title
     if (content !== undefined) post.content = content
     if (tags !== undefined) post.tags = tags
     if (coverImage !== undefined) post.coverImage = coverImage
 
-    // .save() triggers pre-save hooks (slug, readTime, excerpt)
     const updated = await post.save()
     await updated.populate("author", "name username avatar")
 
     res.status(200).json(updated)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── deletePost ───────────────────────────────────────────────────────────────
-// @route  DELETE /api/posts/:id
-// @access Private (protect, author only)
-export const deletePost = async (req, res) => {
+export const deletePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
 
@@ -185,23 +125,21 @@ export const deletePost = async (req, res) => {
       return res.status(404).json({ message: "Post not found" })
     }
 
-    // Only the original author can delete
     if (post.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" })
     }
 
     await post.deleteOne()
+    await Comment.deleteMany({ post: req.params.id })
 
     res.status(200).json({ message: "Post deleted successfully" })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── clapPost ─────────────────────────────────────────────────────────────────
-// @route  POST /api/posts/:id/clap
-// @access Private (protect)
-export const clapPost = async (req, res) => {
+export const clapPost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
 
@@ -209,19 +147,26 @@ export const clapPost = async (req, res) => {
       return res.status(404).json({ message: "Post not found" })
     }
 
-    const userId = req.user._id.toString()
-
-    // Check if user already clapped (compare as strings)
-    const alreadyClapped = post.claps.some(
-      (id) => id.toString() === userId
-    )
+    const alreadyClapped = post.claps
+      .map((c) => c.toString())
+      .includes(req.user._id.toString())
 
     if (alreadyClapped) {
-      // Unclap — remove user from claps array
-      post.claps = post.claps.filter((id) => id.toString() !== userId)
+      post.claps = post.claps.filter(
+        (c) => c.toString() !== req.user._id.toString()
+      )
     } else {
-      // Clap — add user to claps array
       post.claps.push(req.user._id)
+
+      // Send notification if clapping someone else's post
+      if (post.author.toString() !== req.user._id.toString()) {
+        await Notification.create({
+          recipient: post.author,
+          sender: req.user._id,
+          type: "clap",
+          post: post._id,
+        })
+      }
     }
 
     await post.save()
@@ -231,6 +176,69 @@ export const clapPost = async (req, res) => {
       clapped: !alreadyClapped,
     })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
+  }
+}
+
+// ─── getUserPosts ─────────────────────────────────────────────────────────────
+export const getUserPosts = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ username: req.params.username })
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    const posts = await Post.find({ author: user._id, published: true })
+      .populate("author", "name username avatar")
+      .sort({ createdAt: -1 })
+
+    res.status(200).json({ posts })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── searchPosts ──────────────────────────────────────────────────────────────
+export const searchPosts = async (req, res, next) => {
+  try {
+    const { q, page = 1, limit = 10 } = req.query
+
+    if (!q || !q.trim()) {
+      return res.status(400).json({ message: "Search query is required" })
+    }
+
+    const regex = new RegExp(q.trim(), "i")
+
+    const filter = {
+      published: true,
+      $or: [{ title: regex }, { excerpt: regex }, { tags: regex }],
+    }
+
+    const skip = (Number(page) - 1) * Number(limit)
+
+    const [posts, total] = await Promise.all([
+      Post.find(filter)
+        .populate("author", "name username avatar")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      Post.countDocuments(filter),
+    ])
+
+    const users = await User.find({
+      $or: [{ name: regex }, { username: regex }],
+    })
+      .select("name username avatar bio")
+      .limit(5)
+
+    res.status(200).json({
+      posts,
+      users,
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    })
+  } catch (err) {
+    next(err)
   }
 }

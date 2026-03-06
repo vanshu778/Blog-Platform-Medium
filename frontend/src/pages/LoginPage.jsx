@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const res = await api.post('/auth/login', { email, password })
       login(res.data)
-      toast.success(`Welcome back, ${res.data.name}!`)
+      toast.success(`Welcome back, ${res.data.user.name}!`)
       navigate('/')
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong')
@@ -37,7 +37,7 @@ export default function LoginPage() {
           <Link to="/" className="inline-flex items-center gap-2">
             <span className="text-accent text-xl">✦</span>
             <span className="font-serif text-xl font-semibold text-ink">
-              Inkwell
+              Medium
             </span>
           </Link>
         </div>

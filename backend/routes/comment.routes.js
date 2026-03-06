@@ -1,19 +1,17 @@
-// routes/comment.routes.js
-// Comment routes — get, create, and delete comments
+// Comment routes — get, add, and delete comments
 
 import express from "express"
 import {
   getComments,
-  createComment,
+  addComment,
   deleteComment,
 } from "../controllers/comment.controller.js"
 import { protect } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
 
-// Nested under /api/posts/:postId/comments
-router.get("/posts/:postId/comments", getComments)
-router.post("/posts/:postId/comments", protect, createComment)
-router.delete("/comments/:id", protect, deleteComment)
+router.get("/:postId", getComments)
+router.post("/:postId", protect, addComment)
+router.delete("/:commentId", protect, deleteComment)
 
 export default router

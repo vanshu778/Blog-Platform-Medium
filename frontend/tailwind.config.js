@@ -61,7 +61,7 @@ module.exports = {
         md: '0 4px 16px rgba(0,0,0,0.1)',
       },
       typography: ({ theme }) => ({
-        inkwell: {
+        medium: {
           css: {
             '--tw-prose-body': theme('colors.ink-light'),
             '--tw-prose-headings': theme('colors.ink'),

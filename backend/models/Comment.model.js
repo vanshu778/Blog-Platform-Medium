@@ -23,13 +23,6 @@ const commentSchema = new Schema(
       ref: "Post",
       required: true,
     },
-
-    // Self-referencing for nested replies
-    parentComment: {
-      type: Schema.Types.ObjectId,
-      ref: "Comment",
-      default: null,
-    },
   },
   {
     timestamps: true,

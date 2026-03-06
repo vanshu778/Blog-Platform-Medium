@@ -1,13 +1,11 @@
-// controllers/user.controller.js
-// Handles user profiles, follow/unfollow toggle, and profile updates
+// Handles user profiles, follow/unfollow, bookmarks, suggestions, and search
 
 import User from "../models/User.model.js"
 import Post from "../models/Post.model.js"
+import Notification from "../models/Notification.model.js"
 
 // ─── getProfile ───────────────────────────────────────────────────────────────
-// @route  GET /api/users/:username
-// @access Public
-export const getProfile = async (req, res) => {
+export const getProfile = async (req, res, next) => {
   try {
     const user = await User.findOne({ username: req.params.username })
       .select("-password")
@@ -18,54 +16,49 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" })
     }
 
-    // Get all published posts by this user
-    const posts = await Post.find({ author: user._id, published: true })
-      .sort({ createdAt: -1 })
-      .populate("author", "name username avatar")
-
-    res.status(200).json({ user, posts })
+    res.status(200).json(user)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── toggleFollow ─────────────────────────────────────────────────────────────
-// @route  POST /api/users/:id/follow
-// @access Private (protect)
-export const toggleFollow = async (req, res) => {
+export const toggleFollow = async (req, res, next) => {
   try {
-    // Prevent self-follow
     if (req.params.id === req.user._id.toString()) {
-      return res.status(400).json({ message: "Cannot follow yourself" })
+      return res.status(400).json({ message: "You cannot follow yourself" })
     }
 
     const targetUser = await User.findById(req.params.id)
-    const currentUser = await User.findById(req.user._id)
-
     if (!targetUser) {
       return res.status(404).json({ message: "User not found" })
     }
 
-    // Check if already following (compare as strings)
-    const isFollowing = currentUser.following.some(
-      (id) => id.toString() === targetUser._id.toString()
-    )
+    const currentUser = await User.findById(req.user._id)
+
+    const isFollowing = currentUser.following
+      .map((f) => f.toString())
+      .includes(req.params.id)
 
     if (isFollowing) {
-      // Unfollow — remove references from both users
       currentUser.following = currentUser.following.filter(
-        (id) => id.toString() !== targetUser._id.toString()
+        (f) => f.toString() !== req.params.id
       )
       targetUser.followers = targetUser.followers.filter(
-        (id) => id.toString() !== currentUser._id.toString()
+        (f) => f.toString() !== req.user._id.toString()
       )
     } else {
-      // Follow — add references to both users
-      currentUser.following.push(targetUser._id)
-      targetUser.followers.push(currentUser._id)
+      currentUser.following.push(req.params.id)
+      targetUser.followers.push(req.user._id)
+
+      await Notification.create({
+        recipient: targetUser._id,
+        sender: currentUser._id,
+        type: "follow",
+        post: null,
+      })
     }
 
-    // Save both users in parallel
     await Promise.all([currentUser.save(), targetUser.save()])
 
     res.status(200).json({
@@ -73,19 +66,38 @@ export const toggleFollow = async (req, res) => {
       followerCount: targetUser.followers.length,
     })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
+  }
+}
+
+// ─── updateProfile ────────────────────────────────────────────────────────────
+export const updateProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+
+    const { name, bio, avatar } = req.body
+
+    if (name !== undefined) user.name = name
+    if (bio !== undefined) user.bio = bio
+    if (avatar !== undefined) user.avatar = avatar
+
+    await user.save()
+
+    const updatedUser = user.toObject()
+    delete updatedUser.password
+
+    res.status(200).json(updatedUser)
+  } catch (err) {
+    next(err)
   }
 }
 
 // ─── toggleBookmark ───────────────────────────────────────────────────────────
-// @route  POST /api/users/bookmarks/:postId
-// @access Private (protect)
-export const toggleBookmark = async (req, res) => {
+export const toggleBookmark = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id)
     const postId = req.params.postId
 
-    // Verify post exists
     const postExists = await Post.findById(postId)
     if (!postExists) {
       return res.status(404).json({ message: "Post not found" })
@@ -110,14 +122,12 @@ export const toggleBookmark = async (req, res) => {
       bookmarks: user.bookmarks,
     })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── getBookmarks ─────────────────────────────────────────────────────────────
-// @route  GET /api/users/bookmarks
-// @access Private (protect)
-export const getBookmarks = async (req, res) => {
+export const getBookmarks = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: "bookmarks",
@@ -127,32 +137,44 @@ export const getBookmarks = async (req, res) => {
 
     res.status(200).json(user.bookmarks)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
-// ─── updateProfile ────────────────────────────────────────────────────────────
-// @route  PUT /api/users/profile/update
-// @access Private (protect)
-export const updateProfile = async (req, res) => {
+// ─── getSuggestedUsers ────────────────────────────────────────────────────────
+export const getSuggestedUsers = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id)
+    const users = await User.find({
+      _id: { $nin: [...req.user.following, req.user._id] },
+    })
+      .select("name username avatar bio followers")
+      .limit(5)
 
-    const { name, bio, avatar } = req.body
-
-    // Update only provided fields
-    if (name !== undefined) user.name = name
-    if (bio !== undefined) user.bio = bio
-    if (avatar !== undefined) user.avatar = avatar
-
-    await user.save()
-
-    // Return updated user without password
-    const updatedUser = user.toObject()
-    delete updatedUser.password
-
-    res.status(200).json(updatedUser)
+    res.status(200).json({ users })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
+  }
+}
+
+// ─── searchUsers ──────────────────────────────────────────────────────────────
+export const searchUsers = async (req, res, next) => {
+  try {
+    const { q } = req.query
+
+    if (!q || !q.trim()) {
+      return res.status(200).json({ users: [] })
+    }
+
+    const regex = new RegExp(q, "i")
+
+    const users = await User.find({
+      $or: [{ name: regex }, { username: regex }],
+    })
+      .select("name username avatar bio")
+      .limit(10)
+
+    res.status(200).json({ users })
+  } catch (err) {
+    next(err)
   }
 }

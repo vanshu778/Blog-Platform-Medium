@@ -14,14 +14,23 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// On 401, clear auth state and redirect to login
+// On 401, clear stale token — but only force-redirect for protected actions,
+// never for /auth/me (let AuthContext handle that gracefully)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      const requestUrl = error.config?.url || ''
+      const isAuthMe = requestUrl.includes('/auth/me')
+      const isAuthRoute =
+        window.location.pathname === '/login' ||
+        window.location.pathname === '/register'
+
+      if (!isAuthMe && !isAuthRoute) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.replace('/login')
+      }
     }
     return Promise.reject(error)
   }

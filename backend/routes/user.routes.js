@@ -1,5 +1,4 @@
-// routes/user.routes.js
-// User routes — public profile, follow toggle, profile update
+// User routes — search, suggestions, profile, follow, bookmarks, and update
 
 import express from "express"
 import {
@@ -8,11 +7,15 @@ import {
   updateProfile,
   toggleBookmark,
   getBookmarks,
+  getSuggestedUsers,
+  searchUsers,
 } from "../controllers/user.controller.js"
 import { protect } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
 
+router.get("/search", searchUsers)
+router.get("/suggested", protect, getSuggestedUsers)
 router.get("/bookmarks", protect, getBookmarks)
 router.post("/bookmarks/:postId", protect, toggleBookmark)
 router.get("/:username", getProfile)

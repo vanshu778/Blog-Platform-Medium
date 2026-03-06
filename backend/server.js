@@ -4,12 +4,15 @@
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
+import cookieParser from "cookie-parser"
 import connectDB from "./config/db.js"
+import errorMiddleware from "./middleware/error.middleware.js"
 
 import authRoutes from "./routes/auth.routes.js"
 import postRoutes from "./routes/post.routes.js"
 import userRoutes from "./routes/user.routes.js"
 import commentRoutes from "./routes/comment.routes.js"
+import notificationRoutes from "./routes/notification.routes.js"
 
 dotenv.config()
 
@@ -17,17 +20,23 @@ const app = express()
 
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser())
 
 // Health check
-app.get("/", (req, res) => res.json({ message: "Inkwell API running 🚀" }))
+app.get("/", (req, res) => res.json({ message: "Medium Clone API 🚀" }))
 
 // Mount API routes
 app.use("/api/auth", authRoutes)
 app.use("/api/posts", postRoutes)
 app.use("/api/users", userRoutes)
-app.use("/api", commentRoutes)
+app.use("/api/comments", commentRoutes)
+app.use("/api/notifications", notificationRoutes)
 
-const PORT = process.env.PORT || 5000
+// Global error handler — must be LAST middleware
+app.use(errorMiddleware)
+
+const PORT = process.env.PORT || 8000
 
 connectDB().then(() => {
   app.listen(PORT, () => {

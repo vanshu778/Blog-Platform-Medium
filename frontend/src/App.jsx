@@ -70,7 +70,7 @@ export default function App() {
         />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/post/:slug" element={<PostPage />} />
-        <Route path="/@:username" element={<ProfilePage />} />
+        <Route path="/:username" element={<ProfilePage />} />
       </Routes>
       <Toaster
         position="top-center"

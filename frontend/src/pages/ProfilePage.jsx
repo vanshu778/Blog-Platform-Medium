@@ -6,39 +6,50 @@ import toast from 'react-hot-toast'
 import PostCard from '../components/blog/PostCard'
 
 export default function ProfilePage() {
-  const { username } = useParams()
+  const { username: rawParam } = useParams()
+  const username = rawParam.replace(/^@/, '')
   const { user } = useAuth()
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [following, setFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
 
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true)
+      setError(false)
       try {
-        const res = await api.get(`/users/${username}`)
-        setProfile(res.data.user)
-        setPosts(res.data.posts)
-        setFollowerCount(res.data.user.followers?.length || 0)
-        if (user) {
-          const uid = user._id || user.id
-          setFollowing(
-            res.data.user.followers?.some((f) =>
-              typeof f === 'object' ? f._id === uid : f === uid
-            ) || false
-          )
-        }
+        const [profileRes, postsRes] = await Promise.all([
+          api.get(`/users/${username}`),
+          api.get(`/posts/user/${username}`),
+        ])
+        const profileData = profileRes.data
+        setProfile(profileData)
+        setPosts(postsRes.data.posts || [])
+        setFollowerCount(profileData.followers?.length || 0)
       } catch {
-        navigate('/')
+        setError(true)
       } finally {
         setLoading(false)
       }
     }
     fetchProfile()
-  }, [username, navigate, user])
+  }, [username])
+
+  // Sync follow state when user or profile changes
+  useEffect(() => {
+    if (user && profile) {
+      const uid = user._id || user.id
+      setFollowing(
+        profile.followers?.some((f) =>
+          typeof f === 'object' ? f._id === uid : f === uid
+        ) || false
+      )
+    }
+  }, [user, profile])
 
   const handleFollow = async () => {
     if (!user) {
@@ -89,6 +100,22 @@ export default function ProfilePage() {
             </div>
           </aside>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-[1192px] mx-auto px-6 py-20 text-center">
+        <p className="text-5xl mb-4">😕</p>
+        <h2 className="font-serif text-2xl font-bold text-ink mb-2">User not found</h2>
+        <p className="text-ink-muted mb-6">We couldn't find a profile for @{username}.</p>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-accent text-white text-sm font-medium px-5 py-2 rounded-full hover:bg-accent-hover transition-colors"
+        >
+          Go home
+        </button>
       </div>
     )
   }

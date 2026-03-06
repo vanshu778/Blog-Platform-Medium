@@ -1,79 +1,64 @@
-// controllers/comment.controller.js
-// Handles CRUD for comments on posts
+// Handles getting, adding, and deleting comments on posts
 
 import Comment from "../models/Comment.model.js"
 import Post from "../models/Post.model.js"
+import Notification from "../models/Notification.model.js"
 
 // ─── getComments ──────────────────────────────────────────────────────────────
-// @route  GET /api/posts/:postId/comments
-// @access Public
-export const getComments = async (req, res) => {
+export const getComments = async (req, res, next) => {
   try {
-    const comments = await Comment.find({
-      post: req.params.postId,
-      parentComment: null,
-    })
+    const comments = await Comment.find({ post: req.params.postId })
       .populate("author", "name username avatar")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
 
-    // Fetch replies for each top-level comment
-    const commentsWithReplies = await Promise.all(
-      comments.map(async (comment) => {
-        const replies = await Comment.find({ parentComment: comment._id })
-          .populate("author", "name username avatar")
-          .sort({ createdAt: 1 })
-        return { ...comment.toObject(), replies }
-      })
-    )
-
-    res.status(200).json(commentsWithReplies)
+    res.status(200).json({ comments, total: comments.length })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
-// ─── createComment ────────────────────────────────────────────────────────────
-// @route  POST /api/posts/:postId/comments
-// @access Private (protect)
-export const createComment = async (req, res) => {
+// ─── addComment ───────────────────────────────────────────────────────────────
+export const addComment = async (req, res, next) => {
   try {
-    const { content, parentComment } = req.body
+    const { content } = req.body
 
-    // Verify post exists
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Comment cannot be empty" })
+    }
+
     const post = await Post.findById(req.params.postId)
     if (!post) {
       return res.status(404).json({ message: "Post not found" })
-    }
-
-    // If replying, verify parent comment exists
-    if (parentComment) {
-      const parent = await Comment.findById(parentComment)
-      if (!parent) {
-        return res.status(404).json({ message: "Parent comment not found" })
-      }
     }
 
     const comment = await Comment.create({
       content,
       author: req.user._id,
       post: req.params.postId,
-      parentComment: parentComment || null,
     })
 
     await comment.populate("author", "name username avatar")
 
-    res.status(201).json({ ...comment.toObject(), replies: [] })
+    // Send notification if commenting on someone else's post
+    if (post.author.toString() !== req.user._id.toString()) {
+      await Notification.create({
+        recipient: post.author,
+        sender: req.user._id,
+        type: "comment",
+        post: req.params.postId,
+      })
+    }
+
+    res.status(201).json(comment)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
 
 // ─── deleteComment ────────────────────────────────────────────────────────────
-// @route  DELETE /api/comments/:id
-// @access Private (protect, author only)
-export const deleteComment = async (req, res) => {
+export const deleteComment = async (req, res, next) => {
   try {
-    const comment = await Comment.findById(req.params.id)
+    const comment = await Comment.findById(req.params.commentId)
 
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" })
@@ -83,12 +68,10 @@ export const deleteComment = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" })
     }
 
-    // Delete all replies too
-    await Comment.deleteMany({ parentComment: comment._id })
     await comment.deleteOne()
 
     res.status(200).json({ message: "Comment deleted" })
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    next(err)
   }
 }
