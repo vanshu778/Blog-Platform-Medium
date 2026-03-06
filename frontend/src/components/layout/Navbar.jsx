@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarUrl } from '../../utils/avatar'
 
-export default function Navbar({ onMenuToggle }) {
+export default function Navbar({ onMenuToggle, isLanding }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -37,6 +37,43 @@ export default function Navbar({ onMenuToggle }) {
     }
   }
 
+  /* ── Landing-page navbar (before login) ─────────────────── */
+  if (isLanding) {
+    return (
+      <nav className="sticky top-0 z-50 h-[64px] border-b border-ink bg-[#f7f4ed]">
+        <div className="max-w-[1192px] mx-auto h-full flex items-center justify-between px-6">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="font-serif text-[28px] font-semibold text-ink tracking-tight">
+              Medium
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-6">
+            <Link to="/" className="hidden sm:inline text-sm text-ink hover:text-ink-light transition-colors">
+              Our story
+            </Link>
+            <Link to="/write" className="hidden sm:inline text-sm text-ink hover:text-ink-light transition-colors">
+              Write
+            </Link>
+            <Link
+              to="/login"
+              className="text-sm text-ink hover:text-ink-light transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/register"
+              className="bg-ink text-cream text-sm font-medium px-4 py-2 rounded-full hover:opacity-90 transition-opacity"
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      </nav>
+    )
+  }
+
+  /* ── Authenticated / default navbar ─────────────────────── */
   return (
     <nav className="sticky top-0 z-50 h-[64px] border-b border-border bg-cream/95 backdrop-blur-xl">
       <div className="max-w-[1192px] mx-auto h-full flex items-center justify-between px-6">

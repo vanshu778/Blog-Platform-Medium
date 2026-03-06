@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
 import Navbar from './components/layout/Navbar'
 import LeftSidebar from './components/layout/LeftSidebar'
+import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -26,14 +27,19 @@ export default function App() {
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Landing page = no sidebars, special navbar
+  const isLanding = !user
+
   return (
     <>
-      <Navbar onMenuToggle={() => setSidebarOpen(true)} />
-      <div className="flex min-h-[calc(100vh-64px)]">
-        <LeftSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Navbar onMenuToggle={() => setSidebarOpen(true)} isLanding={isLanding} />
+      <div className={`flex min-h-[calc(100vh-64px)]`}>
+        {!isLanding && (
+          <LeftSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        )}
         <div className="flex-1 min-w-0">
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={user ? <HomePage /> : <LandingPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/" /> : <LoginPage />}
