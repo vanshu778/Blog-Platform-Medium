@@ -22,7 +22,7 @@ export default function PostCard({ post, style }) {
       <div className="flex-1 min-w-0">
         {/* Author row */}
         <Link
-          to={`/@${authorUsername}`}
+          to={`/${authorUsername}`}
           className="inline-flex items-center gap-2 mb-2"
         >
           <img
@@ -36,7 +36,7 @@ export default function PostCard({ post, style }) {
         </Link>
 
         {/* Title */}
-        <Link to={`/post/${post.slug}`}>
+        <Link to={`/blog/${post.slug}`}>
           <h2 className="font-serif text-xl font-bold text-ink leading-snug mb-1 line-clamp-2">
             {post.title}
           </h2>

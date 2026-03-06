@@ -30,7 +30,7 @@ export default function EditProfilePage() {
       })
       updateUser(res.data)
       toast.success('Profile updated!')
-      navigate(`/@${user.username}`)
+      navigate(`/${user.username}`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update profile')
     } finally {

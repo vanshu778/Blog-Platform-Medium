@@ -6,8 +6,7 @@ import toast from 'react-hot-toast'
 import PostCard from '../components/blog/PostCard'
 
 export default function ProfilePage() {
-  const { username: rawParam } = useParams()
-  const username = rawParam.replace(/^@/, '')
+  const { username } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)

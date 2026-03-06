@@ -109,7 +109,7 @@ export default function RegisterPage() {
             />
             {username && (
               <p className="text-xs text-ink-muted mt-1">
-                medium.com/@{username}
+                medium.com/{username}
               </p>
             )}
           </div>

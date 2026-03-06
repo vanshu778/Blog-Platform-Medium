@@ -136,7 +136,7 @@ export default function PostPage() {
       {/* Author bar */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Link to={`/@${authorUsername}`}>
+          <Link to={`/${authorUsername}`}>
             <img
               src={avatarUrl}
               alt={authorName}
@@ -145,7 +145,7 @@ export default function PostPage() {
           </Link>
           <div>
             <Link
-              to={`/@${authorUsername}`}
+              to={`/${authorUsername}`}
               className="text-sm font-medium text-ink hover:underline"
             >
               {authorName}
@@ -225,7 +225,7 @@ export default function PostPage() {
 
       {/* Author bio section */}
       <div className="flex items-start gap-4 bg-surface-alt rounded-lg p-6">
-        <Link to={`/@${authorUsername}`} className="flex-shrink-0">
+        <Link to={`/${authorUsername}`} className="flex-shrink-0">
           <img
             src={avatarUrl}
             alt={authorName}
@@ -234,7 +234,7 @@ export default function PostPage() {
         </Link>
         <div className="flex-1">
           <Link
-            to={`/@${authorUsername}`}
+            to={`/${authorUsername}`}
             className="font-serif text-lg font-semibold text-ink hover:underline"
           >
             {authorName}

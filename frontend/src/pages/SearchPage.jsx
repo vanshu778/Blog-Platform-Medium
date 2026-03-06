@@ -105,7 +105,7 @@ export default function SearchPage() {
                 {users.map((u) => (
                   <Link
                     key={u._id}
-                    to={`/@${u.username}`}
+                    to={`/${u.username}`}
                     className="flex items-center gap-3 group"
                   >
                     <img

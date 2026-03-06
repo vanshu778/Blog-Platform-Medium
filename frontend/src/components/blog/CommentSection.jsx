@@ -136,7 +136,7 @@ export default function CommentSection({ postId }) {
 
             return (
               <div key={comment._id} className="flex items-start gap-3">
-                <Link to={`/@${authorUsername}`} className="flex-shrink-0">
+                <Link to={`/${authorUsername}`} className="flex-shrink-0">
                   <img
                     src={avatarUrl}
                     alt={authorName}
@@ -146,7 +146,7 @@ export default function CommentSection({ postId }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <Link
-                      to={`/@${authorUsername}`}
+                      to={`/${authorUsername}`}
                       className="text-sm font-medium text-ink hover:underline"
                     >
                       {authorName}

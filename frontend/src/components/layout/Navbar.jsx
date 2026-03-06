@@ -104,7 +104,7 @@ export default function Navbar() {
                 {dropdownOpen && (
                   <div className="absolute right-0 top-[calc(100%+10px)] w-52 bg-surface rounded-lg shadow-md border border-border py-2 animate-fade-in">
                     <Link
-                      to={`/@${user.username}`}
+                      to={`/${user.username}`}
                       onClick={() => setDropdownOpen(false)}
                       className="block px-4 py-2.5 text-sm text-ink-light hover:bg-surface-alt transition-colors"
                     >
