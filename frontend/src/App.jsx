@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
 import Navbar from './components/layout/Navbar'
+import LeftSidebar from './components/layout/LeftSidebar'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -22,10 +24,14 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   const { user } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <>
-      <Navbar />
+      <Navbar onMenuToggle={() => setSidebarOpen(true)} />
+      <div className="flex min-h-[calc(100vh-64px)]">
+        <LeftSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 min-w-0">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route
@@ -72,6 +78,8 @@ export default function App() {
         <Route path="/post/:slug" element={<PostPage />} />
         <Route path="/:username" element={<ProfilePage />} />
       </Routes>
+        </div>
+      </div>
       <Toaster
         position="top-center"
         toastOptions={{

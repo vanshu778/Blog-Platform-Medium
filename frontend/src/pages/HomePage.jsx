@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../utils/api'
 import PostCard from '../components/blog/PostCard'
+import Sidebar from '../components/layout/Sidebar'
 
 const TAGS = [
   'All',
@@ -129,28 +130,7 @@ export default function HomePage() {
         </main>
 
         {/* Sidebar */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-[88px]">
-            <h3 className="font-serif text-lg font-semibold text-ink mb-4">
-              Trending topics
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {TAGS.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setActiveTag(tag)}
-                  className={`text-sm px-3.5 py-1.5 rounded-full border transition-all ${
-                    activeTag === tag
-                      ? 'bg-ink text-cream border-ink'
-                      : 'border-border text-ink-muted hover:border-ink-muted'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
+        <Sidebar />
       </div>
     </div>
   )

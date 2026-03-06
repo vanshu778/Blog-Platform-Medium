@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-export default function Navbar() {
+export default function Navbar({ onMenuToggle }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -41,13 +41,25 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 h-[64px] border-b border-border bg-cream/95 backdrop-blur-xl">
       <div className="max-w-[1192px] mx-auto h-full flex items-center justify-between px-6">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <span className="text-accent text-2xl leading-none">✦</span>
-          <span className="font-serif text-[22px] font-semibold text-ink">
-            Medium
-          </span>
-        </Link>
+        {/* Hamburger (mobile) + Logo */}
+        <div className="flex items-center gap-2">
+          <button
+            className="flex items-center justify-center w-9 h-9 rounded-md text-ink-light hover:bg-surface-alt transition-colors desktop:hidden [&_svg]:w-[22px] [&_svg]:h-[22px]"
+            onClick={onMenuToggle}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-accent text-2xl leading-none">✦</span>
+            <span className="font-serif text-[22px] font-semibold text-ink">
+              Medium
+            </span>
+          </Link>
+        </div>
 
         {/* Search bar */}
         <form onSubmit={handleSearch} className="hidden sm:flex items-center flex-1 max-w-[320px] mx-4">
