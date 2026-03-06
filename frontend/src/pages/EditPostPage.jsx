@@ -153,20 +153,51 @@ export default function EditPostPage() {
 
       <div className="max-w-content mx-auto px-6 py-10">
         <div className="mb-8">
-          <input
-            type="text"
-            value={coverImage}
-            onChange={(e) => setCoverImage(e.target.value)}
-            placeholder="Paste a cover image URL..."
-            className="w-full px-4 py-2.5 border border-border rounded bg-surface text-sm text-ink focus:outline-none focus:border-ink-muted transition-colors"
-          />
-          {coverImage && (
-            <img
-              src={coverImage}
-              alt="Cover preview"
-              className="mt-3 w-full max-h-[300px] object-cover rounded"
-              onError={(e) => (e.target.style.display = 'none')}
-            />
+          {coverImage ? (
+            <div className="relative group">
+              <img
+                src={coverImage}
+                alt="Cover"
+                className="w-full max-h-[300px] object-cover rounded"
+              />
+              <button
+                type="button"
+                onClick={() => setCoverImage('')}
+                className="absolute top-2 right-2 bg-ink/70 hover:bg-ink text-cream text-xs px-3 py-1.5 rounded transition-colors opacity-0 group-hover:opacity-100"
+              >
+                ✕ Remove cover
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                id="edit-cover-upload"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (!file.type.startsWith('image/')) return
+                  if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return }
+                  const reader = new FileReader()
+                  reader.onload = () => setCoverImage(reader.result)
+                  reader.readAsDataURL(file)
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById('edit-cover-upload')?.click()}
+                className="w-full flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-border rounded-lg text-ink-muted hover:border-ink-muted hover:text-ink-light transition-colors cursor-pointer"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span className="text-sm">Add a cover image</span>
+              </button>
+            </>
           )}
         </div>
 

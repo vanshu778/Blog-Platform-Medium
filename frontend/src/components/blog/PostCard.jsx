@@ -78,6 +78,7 @@ export default function PostCard({ post, style }) {
             src={post.coverImage}
             alt={post.title}
             className="w-[160px] h-[107px] object-cover rounded"
+            onError={(e) => (e.target.parentElement.style.display = 'none')}
           />
         </div>
       )}

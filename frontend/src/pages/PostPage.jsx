@@ -190,6 +190,7 @@ export default function PostPage() {
           src={post.coverImage}
           alt={post.title}
           className="w-full max-h-[480px] object-cover rounded mb-10"
+          onError={(e) => (e.target.style.display = 'none')}
         />
       )}
 
