@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import ReactionBar from '../components/blog/ReactionBar'
 import CommentSection from '../components/blog/CommentSection'
 import BookmarkButton from '../components/blog/BookmarkButton'
+import ConfirmModal from '../components/ui/ConfirmModal'
 
 export default function PostPage() {
   const { slug } = useParams()
@@ -17,6 +18,7 @@ export default function PostPage() {
   const [loading, setLoading] = useState(true)
   const [following, setFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -65,13 +67,14 @@ export default function PostPage() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this story?')) return
     try {
       await api.delete(`/posts/${post._id}`)
       toast.success('Story deleted')
       navigate('/')
     } catch {
       toast.error('Failed to delete story')
+    } finally {
+      setShowDeleteModal(false)
     }
   }
 
@@ -163,7 +166,7 @@ export default function PostPage() {
                 Edit
               </Link>
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteModal(true)}
                 className="text-sm text-danger border border-danger/30 px-4 py-1.5 rounded-full hover:bg-danger hover:text-white transition-all"
               >
                 Delete
@@ -244,6 +247,15 @@ export default function PostPage() {
           )}
         </div>
       </div>
+      {/* Delete confirmation modal */}
+      <ConfirmModal
+        open={showDeleteModal}
+        title="Delete this story?"
+        message="This will permanently delete your story. This action cannot be undone."
+        confirmText="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   )
 }

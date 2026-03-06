@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 import { getAvatarUrl } from '../../utils/avatar'
 import toast from 'react-hot-toast'
+import ConfirmModal from '../ui/ConfirmModal'
 
 export default function CommentSection({ postId }) {
   const { user } = useAuth()
@@ -12,6 +13,7 @@ export default function CommentSection({ postId }) {
   const [loading, setLoading] = useState(true)
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => {
     fetchComments()
@@ -46,14 +48,14 @@ export default function CommentSection({ postId }) {
   }
 
   const handleDelete = async (commentId) => {
-    if (!window.confirm('Delete this comment?')) return
-
     try {
       await api.delete(`/comments/${commentId}`)
       setComments((prev) => prev.filter((c) => c._id !== commentId))
       toast.success('Comment deleted')
     } catch {
       toast.error('Failed to delete comment')
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -158,7 +160,7 @@ export default function CommentSection({ postId }) {
                   </p>
                   {isOwn && (
                     <button
-                      onClick={() => handleDelete(comment._id)}
+                      onClick={() => setDeleteTarget(comment._id)}
                       className="text-xs text-danger/70 hover:text-danger transition-colors mt-2"
                     >
                       Delete
@@ -170,6 +172,16 @@ export default function CommentSection({ postId }) {
           })}
         </div>
       )}
+
+      {/* Delete comment confirmation modal */}
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete this comment?"
+        message="This will permanently remove your comment."
+        confirmText="Delete"
+        onConfirm={() => handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
