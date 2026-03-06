@@ -134,42 +134,86 @@ export const deletePost = async (req, res, next) => {
   }
 }
 
-// ─── clapPost ─────────────────────────────────────────────────────────────────
-export const clapPost = async (req, res, next) => {
+// ─── reactPost ────────────────────────────────────────────────────────────────
+const VALID_REACTIONS = ["like", "love", "clap", "insightful", "funny", "celebrate"]
+
+export const reactPost = async (req, res, next) => {
   try {
+    const { type } = req.body
+
+    if (!type || !VALID_REACTIONS.includes(type)) {
+      return res.status(400).json({ message: `Invalid reaction. Must be one of: ${VALID_REACTIONS.join(", ")}` })
+    }
+
     const post = await Post.findById(req.params.id)
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" })
     }
 
-    const alreadyClapped = post.claps
-      .map((c) => c.toString())
-      .includes(req.user._id.toString())
+    // Initialize reactions map if missing (for older posts)
+    if (!post.reactions) {
+      post.reactions = {}
+    }
+    for (const r of VALID_REACTIONS) {
+      if (!post.reactions[r]) post.reactions[r] = []
+    }
 
-    if (alreadyClapped) {
-      post.claps = post.claps.filter(
-        (c) => c.toString() !== req.user._id.toString()
+    const userId = req.user._id.toString()
+    const alreadyReacted = post.reactions[type]
+      .map((id) => id.toString())
+      .includes(userId)
+
+    if (alreadyReacted) {
+      // Remove the reaction
+      post.reactions[type] = post.reactions[type].filter(
+        (id) => id.toString() !== userId
       )
     } else {
-      post.claps.push(req.user._id)
+      // Add the reaction
+      post.reactions[type].push(req.user._id)
 
-      // Send notification if clapping someone else's post
-      if (post.author.toString() !== req.user._id.toString()) {
+      // Also keep legacy claps array in sync for backward compatibility
+      if (type === "clap") {
+        const alreadyClapped = post.claps.map((c) => c.toString()).includes(userId)
+        if (!alreadyClapped) post.claps.push(req.user._id)
+      }
+
+      // Send notification if reacting to someone else's post
+      if (post.author.toString() !== userId) {
         await Notification.create({
           recipient: post.author,
           sender: req.user._id,
-          type: "clap",
+          type: "reaction",
           post: post._id,
         })
       }
     }
 
+    // Remove from legacy claps if un-clapping
+    if (type === "clap" && alreadyReacted) {
+      post.claps = post.claps.filter((c) => c.toString() !== userId)
+    }
+
     await post.save()
 
+    // Build response: count per reaction + which ones current user toggled
+    const reactionSummary = {}
+    let totalReactions = 0
+    for (const r of VALID_REACTIONS) {
+      const count = post.reactions[r]?.length || 0
+      reactionSummary[r] = {
+        count,
+        reacted: post.reactions[r]?.map((id) => id.toString()).includes(userId),
+      }
+      totalReactions += count
+    }
+
     res.status(200).json({
+      reactions: reactionSummary,
+      totalReactions,
+      // Legacy field for backward compat
       claps: post.claps.length,
-      clapped: !alreadyClapped,
     })
   } catch (err) {
     next(err)

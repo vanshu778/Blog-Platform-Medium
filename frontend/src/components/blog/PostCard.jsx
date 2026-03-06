@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { getAvatarUrl } from '../../utils/avatar'
+import { ReactionSummary } from './ReactionBar'
 
 export default function PostCard({ post, style }) {
   const authorName = post.author?.name || 'Anonymous'
   const authorUsername = post.author?.username || ''
   const avatarUrl = getAvatarUrl(post.author?.avatar, authorName)
-  const clapCount = post.claps?.length || 0
 
   return (
     <article
@@ -56,12 +56,7 @@ export default function PostCard({ post, style }) {
             </span>
             <span>·</span>
             <span>{post.readTime} min read</span>
-            {clapCount > 0 && (
-              <>
-                <span>·</span>
-                <span>👏 {clapCount}</span>
-              </>
-            )}
+            <ReactionSummary post={post} />
           </div>
           <div className="flex gap-1.5">
             {post.tags?.slice(0, 2).map((tag) => (

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { getAvatarUrl } from '../utils/avatar'
 import toast from 'react-hot-toast'
-import ClapButton from '../components/blog/ClapButton'
+import ReactionBar from '../components/blog/ReactionBar'
 import CommentSection from '../components/blog/CommentSection'
 import BookmarkButton from '../components/blog/BookmarkButton'
 
@@ -105,11 +105,6 @@ export default function PostPage() {
   const avatarUrl = getAvatarUrl(post.author?.avatar, authorName)
   const uid = user?._id || user?.id
   const isOwnPost = user && (uid === post.author._id)
-  const userClapped = user
-    ? post.claps?.some((id) =>
-        typeof id === 'object' ? id._id === uid : id === uid
-      ) || false
-    : false
 
   return (
     <div className="max-w-content mx-auto px-6 py-12">
@@ -204,18 +199,9 @@ export default function PostPage() {
         dangerouslySetInnerHTML={{ __html: post.content }}
       />
 
-      {/* Clap bar */}
-      <div className="border-t border-b border-border py-6 my-10 flex items-center gap-4">
-        <ClapButton
-          postId={post._id}
-          initialClaps={post.claps?.length || 0}
-          initialClapped={userClapped}
-        />
-        <span className="text-sm text-ink-muted flex-1">
-          {post.claps?.length > 0
-            ? `${post.claps.length} ${post.claps.length === 1 ? 'person' : 'people'} clapped`
-            : 'Be the first to clap'}
-        </span>
+      {/* Reaction bar */}
+      <div className="border-t border-b border-border py-6 my-10 flex items-center justify-between">
+        <ReactionBar post={post} />
         <BookmarkButton postId={post._id} />
       </div>
 

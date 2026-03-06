@@ -59,6 +59,16 @@ const postSchema = new Schema(
       },
     ],
 
+    // Emoji reactions — each key is a reaction type, value is array of user IDs
+    reactions: {
+      like: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      love: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      clap: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      insightful: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      funny: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      celebrate: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    },
+
     // Auto-calculated reading time in minutes
     readTime: {
       type: Number,

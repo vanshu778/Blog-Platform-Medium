@@ -7,7 +7,7 @@ import {
   createPost,
   updatePost,
   deletePost,
-  clapPost,
+  reactPost,
   getUserPosts,
   searchPosts,
 } from "../controllers/post.controller.js"
@@ -22,6 +22,7 @@ router.get("/:slug", getPost)
 router.post("/", protect, createPost)
 router.put("/:id", protect, updatePost)
 router.delete("/:id", protect, deletePost)
-router.post("/:id/clap", protect, clapPost)
+router.post("/:id/clap", protect, reactPost)
+router.post("/:id/react", protect, reactPost)
 
 export default router
