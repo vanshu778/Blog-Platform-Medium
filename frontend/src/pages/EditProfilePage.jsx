@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
+import { getAvatarUrl } from '../utils/avatar'
 import toast from 'react-hot-toast'
 
 export default function EditProfilePage() {
@@ -38,9 +39,7 @@ export default function EditProfilePage() {
     }
   }
 
-  const avatarUrl =
-    avatar ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'U')}`
+  const avatarUrl = getAvatarUrl(avatar, name || 'U')
 
   return (
     <div className="max-w-[560px] mx-auto px-6 py-12">

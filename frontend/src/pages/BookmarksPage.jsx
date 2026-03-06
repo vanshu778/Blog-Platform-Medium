@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import PostCard from '../components/blog/PostCard'
 
 export default function BookmarksPage() {
-  const { user } = useAuth()
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
 

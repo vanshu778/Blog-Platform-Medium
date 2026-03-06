@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 const TRENDING = [
   { topic: 'Self-Driving Cars Are Coming', label: 'Technology' },
   { topic: 'The Future of Remote Work', label: 'Culture' },
@@ -68,12 +70,13 @@ export default function Sidebar() {
         </h3>
         <div className="flex flex-wrap gap-2">
           {DISCOVER_TAGS.map((tag) => (
-            <button
+            <Link
               key={tag}
+              to={`/search?q=${encodeURIComponent(tag)}`}
               className="bg-surface-alt rounded-full py-2 px-3.5 text-sm font-sans text-ink-light hover:bg-border transition-colors"
             >
               {tag}
-            </button>
+            </Link>
           ))}
         </div>
       </section>

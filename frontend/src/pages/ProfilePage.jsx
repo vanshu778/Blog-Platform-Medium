@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
+import { getAvatarUrl } from '../utils/avatar'
 import toast from 'react-hot-toast'
 import PostCard from '../components/blog/PostCard'
 
@@ -124,9 +125,7 @@ export default function ProfilePage() {
   const uid = user?._id || user?.id
   const isOwnProfile =
     user && (uid === profile._id || user.username === profile.username)
-  const avatarUrl =
-    profile.avatar ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.name)}`
+  const avatarUrl = getAvatarUrl(profile.avatar, profile.name)
 
   return (
     <div className="max-w-[1192px] mx-auto px-6 py-10">

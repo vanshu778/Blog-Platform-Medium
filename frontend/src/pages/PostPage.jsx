@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
+import { getAvatarUrl } from '../utils/avatar'
 import toast from 'react-hot-toast'
 import ClapButton from '../components/blog/ClapButton'
 import CommentSection from '../components/blog/CommentSection'
@@ -101,9 +102,7 @@ export default function PostPage() {
 
   const authorName = post.author?.name || 'Anonymous'
   const authorUsername = post.author?.username || ''
-  const avatarUrl =
-    post.author?.avatar ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(authorName)}`
+  const avatarUrl = getAvatarUrl(post.author?.avatar, authorName)
   const uid = user?._id || user?.id
   const isOwnPost = user && (uid === post.author._id)
   const userClapped = user

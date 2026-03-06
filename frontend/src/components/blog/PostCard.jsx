@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
+import { getAvatarUrl } from '../../utils/avatar'
 
 export default function PostCard({ post, style }) {
   const authorName = post.author?.name || 'Anonymous'
   const authorUsername = post.author?.username || ''
-  const avatarUrl =
-    post.author?.avatar ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(authorName)}`
+  const avatarUrl = getAvatarUrl(post.author?.avatar, authorName)
   const clapCount = post.claps?.length || 0
 
   return (

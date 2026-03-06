@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
+import { getAvatarUrl } from '../../utils/avatar'
 import toast from 'react-hot-toast'
 
 export default function CommentSection({ postId }) {
@@ -67,10 +68,7 @@ export default function CommentSection({ postId }) {
         <form onSubmit={handleSubmit} className="mb-8">
           <div className="flex items-start gap-3">
             <img
-              src={
-                user.avatar ||
-                `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}`
-              }
+              src={getAvatarUrl(user.avatar, user.name)}
               alt={user.name}
               className="w-9 h-9 rounded-full object-cover flex-shrink-0"
             />
@@ -128,9 +126,7 @@ export default function CommentSection({ postId }) {
           {comments.map((comment) => {
             const authorName = comment.author?.name || 'Anonymous'
             const authorUsername = comment.author?.username || ''
-            const avatarUrl =
-              comment.author?.avatar ||
-              `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(authorName)}`
+            const avatarUrl = getAvatarUrl(comment.author?.avatar, authorName)
             const uid = user?._id || user?.id
             const isOwn = uid && comment.author?._id === uid
 

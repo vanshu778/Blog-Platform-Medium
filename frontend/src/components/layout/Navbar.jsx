@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { getAvatarUrl } from '../../utils/avatar'
 
 export default function Navbar({ onMenuToggle }) {
   const { user, logout } = useAuth()
@@ -10,9 +11,7 @@ export default function Navbar({ onMenuToggle }) {
   const [searchQuery, setSearchQuery] = useState('')
   const dropdownRef = useRef(null)
 
-  const avatarUrl =
-    user?.avatar ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user?.name || 'U')}`
+  const avatarUrl = getAvatarUrl(user?.avatar, user?.name || 'U')
 
   useEffect(() => {
     const handleClickOutside = (e) => {

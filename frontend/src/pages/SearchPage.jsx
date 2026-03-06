@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import api from '../utils/api'
+import { getAvatarUrl } from '../utils/avatar'
 import PostCard from '../components/blog/PostCard'
 
 export default function SearchPage() {
@@ -109,10 +110,7 @@ export default function SearchPage() {
                     className="flex items-center gap-3 group"
                   >
                     <img
-                      src={
-                        u.avatar ||
-                        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.name)}`
-                      }
+                      src={getAvatarUrl(u.avatar, u.name)}
                       alt={u.name}
                       className="w-10 h-10 rounded-full object-cover"
                     />
