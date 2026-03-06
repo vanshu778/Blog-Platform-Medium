@@ -53,6 +53,17 @@
   scrollbar-width: none;
 }
 
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+
 /* ── Skeleton shimmer ──────────────────────────────────────── */
 .skeleton {
   background: linear-gradient(

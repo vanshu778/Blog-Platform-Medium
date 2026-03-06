@@ -16,11 +16,7 @@ export const getFeed = async (req, res, next) => {
       filter.tags = tag.toLowerCase()
     }
 
-    // Show posts from followed users + self when logged in with followings,
-    // otherwise show all published posts
-    if (req.user && req.user.following && req.user.following.length > 0) {
-      filter.author = { $in: [...req.user.following, req.user._id] }
-    }
+    // Home feed always shows all published posts
 
     const skip = (Number(page) - 1) * Number(limit)
 
