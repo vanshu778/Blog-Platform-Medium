@@ -23,13 +23,27 @@ const commentSchema = new Schema(
       ref: "Post",
       required: true,
     },
+
+    // null = top-level comment; ObjectId = reply to that comment
+    parentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+    },
+
+    // Tracks if the comment was edited
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   }
 )
 
-// Index for fast lookups by post
-commentSchema.index({ post: 1, createdAt: -1 })
+// Indexes for fast lookups
+commentSchema.index({ post: 1, parentId: 1, createdAt: 1 })
+commentSchema.index({ parentId: 1 })
 
 export default model("Comment", commentSchema)
