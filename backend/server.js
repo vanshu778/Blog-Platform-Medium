@@ -1,14 +1,22 @@
 // server.js
 // Main entry point — sets up Express, connects to MongoDB, and mounts all API routes
 
+import dotenv from "dotenv"
+import path from "path"
+import { fileURLToPath } from "url"
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Load .env from project root
+dotenv.config()
+
 import express from "express"
 import cors from "cors"
-import dotenv from "dotenv"
 import cookieParser from "cookie-parser"
 import helmet from "helmet"
 import compression from "compression"
-import path from "path"
-import { fileURLToPath } from "url"
 import connectDB from "./config/db.js"
 import errorMiddleware from "./middleware/error.middleware.js"
 
@@ -18,11 +26,9 @@ import userRoutes from "./routes/user.routes.js"
 import commentRoutes from "./routes/comment.routes.js"
 import notificationRoutes from "./routes/notification.routes.js"
 
-dotenv.config()
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const isProduction = process.env.NODE_ENV === "production"
+const NODE_ENV = process.env.NODE_ENV || "development"
+const isProduction = NODE_ENV === "production"
+const PORT = process.env.PORT || 8000
 
 const app = express()
 
@@ -42,7 +48,6 @@ const allowedOrigins = process.env.CLIENT_URL
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
@@ -78,10 +83,19 @@ if (isProduction) {
 // Global error handler — must be LAST middleware
 app.use(errorMiddleware)
 
-const PORT = process.env.PORT || 8000
+// Database connection and server startup
+connectDB()
+  .then(() => {
+    app.on("error", (error) => {
+      console.error("❌ Server error:", error)
+      throw error
+    })
 
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT} (${isProduction ? "production" : "development"})`)
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT} (${NODE_ENV})`)
+    })
   })
-})
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Failed:", err.message)
+    process.exit(1)
+  })
