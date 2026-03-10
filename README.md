@@ -9,22 +9,23 @@ A full-stack blog platform built with **React + Vite** (frontend) and **Express 
 | Frontend | React 18, Vite 5, Tailwind CSS, Axios  |
 | Backend  | Express 5, Mongoose, JWT, Helmet       |
 | Database | MongoDB Atlas                           |
+| Hosting  | Vercel (frontend) + Render (backend)    |
 
 ## Project Structure
 
 ```
-├── backend/        # Express API server
-│   ├── config/     # DB connection & env validation
+├── backend/          # Express API server (deploy to Render)
+│   ├── config/       # DB connection & env validation
 │   ├── controllers/
 │   ├── middleware/
 │   ├── models/
 │   ├── routes/
 │   └── server.js
-├── frontend/       # React SPA
+├── frontend/         # React SPA (deploy to Vercel)
 │   ├── src/
+│   ├── vercel.json
 │   └── vite.config.js
-├── Dockerfile
-├── docker-compose.yml
+├── render.yaml       # Render deployment blueprint
 └── README.md
 ```
 
@@ -55,17 +56,17 @@ cd ../frontend && npm install
 cp backend/.env.example backend/.env
 # Edit backend/.env — set MONGO_URI, JWT_SECRET, JWT_REFRESH_SECRET
 
-# Frontend (optional — dev proxy works out of the box)
+# Frontend (optional for local dev — the Vite proxy works out of the box)
 cp frontend/.env.example frontend/.env
 ```
 
 **Required backend variables:**
 
-| Variable             | Description                              |
-| -------------------- | ---------------------------------------- |
-| `MONGO_URI`          | MongoDB connection string                |
-| `JWT_SECRET`         | Secret for access tokens                 |
-| `JWT_REFRESH_SECRET` | Secret for refresh tokens                |
+| Variable             | Description                          |
+| -------------------- | ------------------------------------ |
+| `MONGO_URI`          | MongoDB connection string            |
+| `JWT_SECRET`         | Secret for access tokens             |
+| `JWT_REFRESH_SECRET` | Secret for refresh tokens            |
 
 Generate secrets with: `openssl rand -base64 64`
 
@@ -81,77 +82,89 @@ cd frontend && npm run dev
 
 Open [http://localhost:5173](http://localhost:5173)
 
-## Deployment
+---
 
-### Option A: Docker (Recommended)
+## Deployment (Vercel + Render)
 
-The Dockerfile uses a multi-stage build that compiles the frontend and serves it from the backend.
+### Step 1 — Deploy backend to Render
 
-```bash
-# Build & run
-docker compose up --build
+1. Go to [render.com](https://render.com) → **New Web Service**
+2. Connect your GitHub repo
+3. Configure:
 
-# Or without compose:
-docker build -t blog-platform .
-docker run -p 8000:8000 --env-file backend/.env blog-platform
+   | Setting        | Value            |
+   | -------------- | ---------------- |
+   | Root Directory | `backend`        |
+   | Build Command  | `npm install`    |
+   | Start Command  | `npm start`      |
+
+4. Add environment variables in the Render dashboard:
+
+   | Variable             | Value                                      |
+   | -------------------- | ------------------------------------------ |
+   | `NODE_ENV`           | `production`                               |
+   | `MONGO_URI`          | Your MongoDB Atlas connection string       |
+   | `JWT_SECRET`         | Generate with `openssl rand -base64 64`    |
+   | `JWT_REFRESH_SECRET` | Generate with `openssl rand -base64 64`    |
+   | `JWT_EXPIRE`         | `15m`                                      |
+   | `JWT_REFRESH_EXPIRE` | `7d`                                       |
+   | `CLIENT_URL`         | Your Vercel URL (e.g. `https://your-app.vercel.app`) |
+   | `GOOGLE_CLIENT_ID`   | *(optional)* Your Google OAuth client ID   |
+
+5. Deploy — note the Render URL (e.g. `https://your-backend.onrender.com`)
+
+> **Tip:** You can also use the **render.yaml** blueprint for automatic setup — click "New Blueprint Instance" in the Render dashboard.
+
+### Step 2 — Deploy frontend to Vercel
+
+1. Go to [vercel.com](https://vercel.com) → **New Project**
+2. Import your GitHub repo
+3. Configure:
+
+   | Setting          | Value                                        |
+   | ---------------- | -------------------------------------------- |
+   | Root Directory   | `frontend`                                   |
+   | Build Command    | `npm run build`                              |
+   | Output Directory | `dist`                                       |
+   | Framework Preset | Vite                                         |
+
+4. Add environment variables in the Vercel dashboard:
+
+   | Variable              | Value                                          |
+   | --------------------- | ---------------------------------------------- |
+   | `VITE_API_URL`        | Your Render backend URL (e.g. `https://your-backend.onrender.com`) |
+   | `VITE_GOOGLE_CLIENT_ID` | *(optional)* Your Google OAuth client ID     |
+
+5. Deploy
+
+### Step 3 — Update Render `CLIENT_URL`
+
+After Vercel gives you the frontend URL, go back to the Render dashboard and set:
+
+```
+CLIENT_URL=https://your-app.vercel.app
 ```
 
-### Option B: Railway / Render / Heroku
+This ensures CORS allows requests from your frontend.
 
-These platforms auto-detect Node.js. Set the **Root Directory** to `backend` and configure:
-
-| Setting         | Value                          |
-| --------------- | ------------------------------ |
-| Build Command   | `npm run build`                |
-| Start Command   | `npm start`                    |
-| Root Directory  | `backend`                      |
-
-Then set the required environment variables in the platform dashboard.
-
-> The backend `build` script automatically runs `cd ../frontend && npm ci && npm run build`, so both sides are built in one step.
-
-### Option C: Manual VPS
-
-```bash
-# On your server
-git clone <repo> && cd Blog-Platform-Medium/backend
-npm ci
-npm run build        # builds the frontend
-npm start            # starts production server on port 8000
-```
-
-### Environment Variables for Production
-
-```env
-NODE_ENV=production
-PORT=8000
-MONGO_URI=mongodb+srv://...
-JWT_SECRET=<generate-with-openssl>
-JWT_REFRESH_SECRET=<generate-with-openssl>
-JWT_EXPIRE=15m
-JWT_REFRESH_EXPIRE=7d
-CLIENT_URL=https://yourdomain.com
-GOOGLE_CLIENT_ID=your-id (optional)
-```
-
-> **Important:** Set `CLIENT_URL` to your deployed domain for CORS to work correctly. Multiple origins can be comma-separated.
+---
 
 ## API Endpoints
 
-| Method | Endpoint                 | Auth     | Description             |
-| ------ | ----------------------- | -------- | ----------------------- |
-| GET    | `/api/health`           | —        | Health check + DB status|
-| POST   | `/api/auth/register`    | —        | Register new user       |
-| POST   | `/api/auth/login`       | —        | Login                   |
-| POST   | `/api/auth/google`      | —        | Google OAuth            |
-| POST   | `/api/auth/logout`      | —        | Logout                  |
-| POST   | `/api/auth/refresh`     | Cookie   | Refresh access token    |
-| GET    | `/api/auth/me`          | Bearer   | Current user            |
-| GET    | `/api/posts`            | Optional | List / search posts     |
-| POST   | `/api/posts`            | Bearer   | Create post             |
-| GET    | `/api/posts/:slug`      | Optional | Get single post         |
-| PUT    | `/api/posts/:id`        | Bearer   | Update post             |
-| DELETE | `/api/posts/:id`        | Bearer   | Delete post             |
+| Method | Endpoint              | Auth     | Description              |
+| ------ | --------------------- | -------- | ------------------------ |
+| GET    | `/api/health`         | —        | Health check + DB status |
+| POST   | `/api/auth/register`  | —        | Register new user        |
+| POST   | `/api/auth/login`     | —        | Login                    |
+| POST   | `/api/auth/google`    | —        | Google OAuth             |
+| POST   | `/api/auth/logout`    | —        | Logout                   |
+| POST   | `/api/auth/refresh`   | Cookie   | Refresh access token     |
+| GET    | `/api/auth/me`        | Bearer   | Current user             |
+| GET    | `/api/posts`          | Optional | List / search posts      |
+| POST   | `/api/posts`          | Bearer   | Create post              |
+| GET    | `/api/posts/:slug`    | Optional | Get single post          |
+| PUT    | `/api/posts/:id`      | Bearer   | Update post              |
+| DELETE | `/api/posts/:id`      | Bearer   | Delete post              |
 
 ## License
 

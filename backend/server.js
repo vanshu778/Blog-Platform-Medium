@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser"
 import helmet from "helmet"
 import compression from "compression"
 import path from "path"
+import fs from "fs"
 import { fileURLToPath } from "url"
 import connectDB from "./config/db.js"
 import validateEnv from "./config/validateEnv.js"
@@ -74,13 +75,15 @@ app.use("/api/users", userRoutes)
 app.use("/api/comments", commentRoutes)
 app.use("/api/notifications", notificationRoutes)
 
-// Serve frontend in production
+// Serve frontend in production (only when dist exists, e.g. self-hosted)
 if (isProduction) {
   const frontendDist = path.join(__dirname, "..", "frontend", "dist")
-  app.use(express.static(frontendDist))
-  app.get("/{*splat}", (req, res) => {
-    res.sendFile(path.join(frontendDist, "index.html"))
-  })
+  if (fs.existsSync(frontendDist)) {
+    app.use(express.static(frontendDist))
+    app.get("/{*splat}", (req, res) => {
+      res.sendFile(path.join(frontendDist, "index.html"))
+    })
+  }
 }
 
 // Global error handler — must be LAST middleware
