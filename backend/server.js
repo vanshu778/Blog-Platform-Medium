@@ -102,7 +102,7 @@ connectDB().then(() => {
   const shutdown = (signal) => {
     console.log(`\n${signal} received. Shutting down gracefully…`)
     server.close(() => {
-      mongoose.connection.close(false).then(() => {
+      mongoose.connection.close().then(() => {
         console.log("MongoDB connection closed.")
         process.exit(0)
       })
