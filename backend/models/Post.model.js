@@ -71,6 +71,18 @@ const postSchema = new Schema(
       type: Boolean,
       default: true,
     },
+
+    // View count for trending
+    views: {
+      type: Number,
+      default: 0,
+    },
+
+    // Scheduled publishing — null means publish immediately
+    scheduledAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // adds createdAt and updatedAt automatically

@@ -19,6 +19,8 @@ export default function PostPage() {
   const [following, setFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [readingMode, setReadingMode] = useState(false)
+  const [recommended, setRecommended] = useState([])
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -42,6 +44,20 @@ export default function PostPage() {
     }
     fetchPost()
   }, [slug, navigate, user])
+
+  // Fetch recommended articles
+  useEffect(() => {
+    if (!user) return
+    const fetchRecommended = async () => {
+      try {
+        const res = await api.get('/posts/recommended')
+        setRecommended(res.data.filter((p) => p.slug !== slug).slice(0, 3))
+      } catch {
+        // silently fail
+      }
+    }
+    fetchRecommended()
+  }, [slug, user])
 
   const handleFollow = async () => {
     if (!user) {
@@ -110,7 +126,24 @@ export default function PostPage() {
   const isOwnPost = user && (uid === post.author._id)
 
   return (
-    <div className="max-w-content mx-auto px-6 py-12">
+    <div className={`max-w-content mx-auto px-6 py-12 ${readingMode ? 'reading-mode' : ''}`}>
+      {/* Reading mode toggle */}
+      <button
+        onClick={() => setReadingMode(!readingMode)}
+        className="fixed bottom-6 right-6 z-50 bg-surface border border-border shadow-lg rounded-full p-3 hover:bg-surface-alt transition-colors"
+        title={readingMode ? 'Exit reading mode' : 'Enter reading mode'}
+      >
+        {readingMode ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
+        )}
+      </button>
       {/* Tags */}
       {post.tags?.length > 0 && (
         <div className="flex gap-2 mb-4">
@@ -204,16 +237,18 @@ export default function PostPage() {
       />
 
       {/* Reaction bar */}
-      <div className="border-t border-b border-border py-6 my-10 flex items-center justify-between">
+      <div className="border-t border-b border-border py-6 my-10 flex items-center justify-between hide-in-reading">
         <ReactionBar post={post} />
         <BookmarkButton postId={post._id} />
       </div>
 
       {/* Comments */}
-      <CommentSection postId={post._id} />
+      <div className="hide-in-reading">
+        <CommentSection postId={post._id} />
+      </div>
 
       {/* Author bio section */}
-      <div className="flex items-start gap-4 bg-surface-alt rounded-lg p-6">
+      <div className="flex items-start gap-4 bg-surface-alt rounded-lg p-6 hide-in-reading">
         <Link to={`/${authorUsername}`} className="flex-shrink-0">
           <img
             src={avatarUrl}
@@ -247,6 +282,38 @@ export default function PostPage() {
           )}
         </div>
       </div>
+
+      {/* Recommended articles */}
+      {recommended.length > 0 && (
+        <div className="mt-12 pt-8 border-t border-border hide-in-reading">
+          <h2 className="font-serif text-xl font-bold text-ink mb-6">Recommended for you</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {recommended.map((rec) => (
+              <Link
+                key={rec._id}
+                to={`/blog/${rec.slug}`}
+                className="group block"
+              >
+                {rec.coverImage && (
+                  <img
+                    src={rec.coverImage}
+                    alt={rec.title}
+                    className="w-full h-32 object-cover rounded mb-3"
+                    onError={(e) => (e.target.style.display = 'none')}
+                  />
+                )}
+                <p className="text-sm font-semibold text-ink group-hover:underline line-clamp-2">
+                  {rec.title}
+                </p>
+                <p className="text-xs text-ink-muted mt-1">
+                  {rec.author?.name} · {rec.readTime} min read
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Delete confirmation modal */}
       <ConfirmModal
         open={showDeleteModal}

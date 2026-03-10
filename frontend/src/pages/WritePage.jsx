@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
@@ -22,6 +22,35 @@ export default function WritePage() {
   const [coverImage, setCoverImage] = useState('')
   const [tags, setTags] = useState([])
   const [publishing, setPublishing] = useState(false)
+  const [draftId, setDraftId] = useState(null)
+  const [autoSaveStatus, setAutoSaveStatus] = useState('')
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [scheduledAt, setScheduledAt] = useState('')
+  const lastSavedRef = useRef({ title: '', content: '' })
+
+  // Auto-save every 5 seconds
+  const autoSave = useCallback(async () => {
+    if (!title.trim() && (!content.trim() || content === '<p><br></p>')) return
+    if (title === lastSavedRef.current.title && content === lastSavedRef.current.content) return
+
+    try {
+      setAutoSaveStatus('Saving...')
+      const body = { title, content, coverImage, tags: tags.map((t) => t.toLowerCase()) }
+      if (draftId) body.id = draftId
+      const res = await api.put(`/posts/draft/${draftId || 'new'}`, body)
+      if (!draftId && res.data._id) setDraftId(res.data._id)
+      lastSavedRef.current = { title, content }
+      setAutoSaveStatus('Draft saved')
+      setTimeout(() => setAutoSaveStatus(''), 2000)
+    } catch {
+      setAutoSaveStatus('')
+    }
+  }, [title, content, coverImage, tags, draftId])
+
+  useEffect(() => {
+    const timer = setInterval(autoSave, 5000)
+    return () => clearInterval(timer)
+  }, [autoSave])
 
   const modules = useMemo(
     () => ({
@@ -64,14 +93,23 @@ export default function WritePage() {
 
     setPublishing(true)
     try {
-      const res = await api.post('/posts', {
+      const body = {
         title,
         content,
         coverImage,
         tags: tags.map((t) => t.toLowerCase()),
-      })
-      toast.success('Story published!')
-      navigate(`/post/${res.data.slug}`)
+      }
+      if (showSchedule && scheduledAt) {
+        body.scheduledAt = new Date(scheduledAt).toISOString()
+        body.published = false
+      }
+      const res = await api.post('/posts', body)
+      if (showSchedule && scheduledAt) {
+        toast.success('Story scheduled!')
+      } else {
+        toast.success('Story published!')
+      }
+      navigate(`/blog/${res.data.slug}`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to publish')
     } finally {
@@ -84,17 +122,58 @@ export default function WritePage() {
       {/* Sticky toolbar */}
       <div className="sticky top-[64px] z-40 bg-cream/95 backdrop-blur-xl border-b border-border">
         <div className="max-w-content mx-auto flex items-center justify-between px-6 py-3">
-          <span className="text-sm text-ink-muted">
-            {wordCount} words · {readTime} min read
-          </span>
-          <button
-            onClick={handlePublish}
-            disabled={publishing}
-            className="bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2 rounded-full transition-colors disabled:opacity-50"
-          >
-            {publishing ? 'Publishing...' : 'Publish story'}
-          </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-ink-muted">
+              {wordCount} words · {readTime} min read
+            </span>
+            {autoSaveStatus && (
+              <span className="text-xs text-ink-muted/60">{autoSaveStatus}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowSchedule(!showSchedule)}
+              className={`text-sm px-4 py-2 rounded-full border transition-all ${
+                showSchedule
+                  ? 'border-accent text-accent'
+                  : 'border-border text-ink-muted hover:border-ink-muted'
+              }`}
+            >
+              ⏱ Schedule
+            </button>
+            <button
+              onClick={handlePublish}
+              disabled={publishing}
+              className="bg-accent hover:bg-accent-hover text-white text-sm font-medium px-5 py-2 rounded-full transition-colors disabled:opacity-50"
+            >
+              {publishing
+                ? 'Publishing...'
+                : showSchedule && scheduledAt
+                ? 'Schedule story'
+                : 'Publish story'}
+            </button>
+          </div>
         </div>
+        {showSchedule && (
+          <div className="max-w-content mx-auto px-6 pb-3 flex items-center gap-3">
+            <label className="text-sm text-ink-muted">Publish on:</label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="text-sm px-3 py-1.5 bg-surface-alt border border-border rounded-lg text-ink focus:outline-none focus:border-ink-muted"
+            />
+            {scheduledAt && (
+              <button
+                onClick={() => { setScheduledAt(''); setShowSchedule(false) }}
+                className="text-xs text-ink-muted hover:text-ink"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Editor area */}

@@ -1,4 +1,4 @@
-// Handles CRUD for blog posts, feed, reactions, search, and user posts
+// Handles CRUD for blog posts, feed, reactions, search, user posts, trending, analytics, drafts, and recommendations
 
 import Post from "../models/Post.model.js"
 import User from "../models/User.model.js"
@@ -52,6 +52,10 @@ export const getPost = async (req, res, next) => {
       return res.status(404).json({ message: "Post not found" })
     }
 
+    // Increment view count
+    post.views = (post.views || 0) + 1
+    await post.save({ validateModifiedOnly: true })
+
     res.status(200).json(post)
   } catch (err) {
     next(err)
@@ -61,20 +65,34 @@ export const getPost = async (req, res, next) => {
 // ─── createPost ───────────────────────────────────────────────────────────────
 export const createPost = async (req, res, next) => {
   try {
-    const { title, content, tags, coverImage } = req.body
+    const { title, content, tags, coverImage, scheduledAt, published } = req.body
 
     if (!title || !content) {
       return res.status(400).json({ message: "Title and content are required" })
     }
 
-    const post = await Post.create({
+    const postData = {
       title,
       content,
       tags,
       coverImage,
       author: req.user._id,
-    })
+    }
 
+    // Handle scheduling
+    if (scheduledAt) {
+      const schedDate = new Date(scheduledAt)
+      if (schedDate <= new Date()) {
+        return res.status(400).json({ message: "Scheduled date must be in the future" })
+      }
+      postData.scheduledAt = schedDate
+      postData.published = false
+    } else if (published === false) {
+      // Save as draft
+      postData.published = false
+    }
+
+    const post = await Post.create(postData)
     await post.populate("author", "name username avatar")
 
     res.status(201).json(post)
@@ -265,6 +283,199 @@ export const searchPosts = async (req, res, next) => {
       total,
       pages: Math.ceil(total / Number(limit)),
     })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── getTrending ────────────────────────────────────────────────────────────────
+// Returns trending posts sorted by a score combining views, reactions, and comments
+export const getTrending = async (req, res, next) => {
+  try {
+    const { period = "week", limit = 10 } = req.query
+
+    const dateFilter = new Date()
+    if (period === "day") dateFilter.setDate(dateFilter.getDate() - 1)
+    else if (period === "month") dateFilter.setMonth(dateFilter.getMonth() - 1)
+    else dateFilter.setDate(dateFilter.getDate() - 7) // default: week
+
+    const posts = await Post.find({
+      published: true,
+      createdAt: { $gte: dateFilter },
+    })
+      .populate("author", "name username avatar")
+      .lean()
+
+    // Get comment counts for each post
+    const postIds = posts.map((p) => p._id)
+    const commentCounts = await Comment.aggregate([
+      { $match: { post: { $in: postIds } } },
+      { $group: { _id: "$post", count: { $sum: 1 } } },
+    ])
+    const commentMap = {}
+    commentCounts.forEach((c) => { commentMap[c._id.toString()] = c.count })
+
+    // Calculate trending score: views + (reactions * 2) + (comments * 3)
+    const scored = posts.map((p) => {
+      const totalReactions = ["like", "love", "clap", "insightful", "funny", "celebrate"]
+        .reduce((sum, r) => sum + (p.reactions?.[r]?.length || 0), 0)
+      const comments = commentMap[p._id.toString()] || 0
+      const score = (p.views || 0) + totalReactions * 2 + comments * 3
+      return { ...p, trendingScore: score, commentCount: comments }
+    })
+
+    scored.sort((a, b) => b.trendingScore - a.trendingScore)
+
+    res.status(200).json({ posts: scored.slice(0, Number(limit)) })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── getAnalytics ─────────────────────────────────────────────────────────────
+// Platform-wide analytics
+export const getAnalytics = async (req, res, next) => {
+  try {
+    const [totalUsers, totalPosts, recentUsers, mostReadPosts] = await Promise.all([
+      User.countDocuments(),
+      Post.countDocuments({ published: true }),
+      // Daily active users = users created in the last 24h (approximation)
+      User.countDocuments({ createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
+      Post.find({ published: true })
+        .sort({ views: -1 })
+        .limit(5)
+        .populate("author", "name username avatar")
+        .select("title slug views readTime createdAt author tags"),
+    ])
+
+    res.status(200).json({
+      totalUsers,
+      totalPosts,
+      dailyActiveUsers: recentUsers,
+      mostReadPosts,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── getRecommended ───────────────────────────────────────────────────────────
+// Returns recommended posts based on user's liked tags and reading history
+export const getRecommended = async (req, res, next) => {
+  try {
+    const userId = req.user._id.toString()
+
+    // 1. Find posts user has reacted to
+    const reactedPosts = await Post.find({
+      $or: [
+        { "reactions.like": req.user._id },
+        { "reactions.love": req.user._id },
+        { "reactions.clap": req.user._id },
+        { "reactions.insightful": req.user._id },
+      ],
+    }).select("tags")
+
+    // 2. Collect most-used tags from user's reacted posts
+    const tagCounts = {}
+    reactedPosts.forEach((p) => {
+      p.tags?.forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1 })
+    })
+    const topTags = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag]) => tag)
+
+    // 3. Find posts matching those tags, excluding already-reacted ones
+    const reactedIds = reactedPosts.map((p) => p._id)
+    const filter = {
+      published: true,
+      _id: { $nin: reactedIds },
+      author: { $ne: req.user._id },
+    }
+    if (topTags.length > 0) {
+      filter.tags = { $in: topTags }
+    }
+
+    const recommended = await Post.find(filter)
+      .populate("author", "name username avatar")
+      .sort({ views: -1, createdAt: -1 })
+      .limit(10)
+
+    // If not enough based on tags, fill with popular posts
+    if (recommended.length < 5) {
+      const existingIds = [...reactedIds, ...recommended.map((p) => p._id)]
+      const filler = await Post.find({
+        published: true,
+        _id: { $nin: existingIds },
+        author: { $ne: req.user._id },
+      })
+        .populate("author", "name username avatar")
+        .sort({ views: -1 })
+        .limit(10 - recommended.length)
+      recommended.push(...filler)
+    }
+
+    res.status(200).json({ posts: recommended })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── saveDraft (auto-save) ────────────────────────────────────────────────────
+export const saveDraft = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { title, content, tags, coverImage } = req.body
+
+    if (id && id !== "new") {
+      // Update existing draft
+      const post = await Post.findById(id)
+      if (!post) return res.status(404).json({ message: "Draft not found" })
+      if (post.author.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: "Not authorized" })
+      }
+
+      if (title !== undefined) post.title = title
+      if (content !== undefined) post.content = content
+      if (tags !== undefined) post.tags = tags
+      if (coverImage !== undefined) post.coverImage = coverImage
+
+      const updated = await post.save()
+      return res.status(200).json({ _id: updated._id, slug: updated.slug })
+    }
+
+    // Create new draft
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: "Title is required for draft" })
+    }
+
+    const draft = await Post.create({
+      title: title || "Untitled",
+      content: content || "",
+      tags: tags || [],
+      coverImage: coverImage || "",
+      author: req.user._id,
+      published: false,
+    })
+
+    res.status(201).json({ _id: draft._id, slug: draft.slug })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── getUserDrafts ────────────────────────────────────────────────────────────
+export const getUserDrafts = async (req, res, next) => {
+  try {
+    const drafts = await Post.find({
+      author: req.user._id,
+      published: false,
+      scheduledAt: null,
+    })
+      .select("title slug excerpt createdAt updatedAt")
+      .sort({ updatedAt: -1 })
+
+    res.status(200).json({ drafts })
   } catch (err) {
     next(err)
   }

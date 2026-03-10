@@ -1,4 +1,4 @@
-// User routes — search, suggestions, profile, follow, bookmarks, and update
+// User routes — search, suggestions, profile, follow, bookmarks, collections, and update
 
 import express from "express"
 import {
@@ -9,6 +9,11 @@ import {
   getBookmarks,
   getSuggestedUsers,
   searchUsers,
+  getCollections,
+  createCollection,
+  deleteCollection,
+  addToCollection,
+  removeFromCollection,
 } from "../controllers/user.controller.js"
 import { protect } from "../middleware/auth.middleware.js"
 
@@ -20,6 +25,13 @@ router.get("/suggested", protect, getSuggestedUsers)
 router.get("/bookmarks", protect, getBookmarks)
 router.post("/bookmarks/:postId", protect, toggleBookmark)
 router.put("/profile/update", protect, updateProfile)
+
+// ── Collection routes ─────────────────────────────────────────────────────────
+router.get("/collections", protect, getCollections)
+router.post("/collections", protect, createCollection)
+router.delete("/collections/:collectionId", protect, deleteCollection)
+router.post("/collections/:collectionId/posts", protect, addToCollection)
+router.delete("/collections/:collectionId/posts/:postId", protect, removeFromCollection)
 
 // ── Dynamic routes last ───────────────────────────────────────────────────────
 router.get("/:username", getProfile)

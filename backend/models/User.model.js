@@ -74,6 +74,15 @@ const userSchema = new Schema(
         ref: "Post",
       },
     ],
+
+    // User collections — named groups of saved posts
+    collections: [
+      {
+        name: { type: String, required: true, trim: true },
+        posts: [{ type: Schema.Types.ObjectId, ref: "Post" }],
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true, // adds createdAt and updatedAt automatically

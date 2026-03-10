@@ -2,9 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme CSS Variables ───────────────────────────────────── */
+:root {
+  --color-cream: #faf9f6;
+  --color-ink: #1a1a1a;
+  --color-ink-light: #3d3d3d;
+  --color-ink-muted: #757575;
+  --color-border: #e8e6e0;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f5f4f0;
+}
+
+:root.dark {
+  --color-cream: #121212;
+  --color-ink: #e8e6e0;
+  --color-ink-light: #c8c6c0;
+  --color-ink-muted: #8a8a8a;
+  --color-border: #2a2a2a;
+  --color-surface: #1a1a1a;
+  --color-surface-alt: #222222;
+}
+
 @layer base {
   body {
     @apply font-sans bg-cream text-ink-light antialiased;
+    transition: background-color 0.2s, color 0.2s;
   }
 
   h1,
@@ -37,10 +59,10 @@
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #faf9f6;
+  background: var(--color-cream);
 }
 ::-webkit-scrollbar-thumb {
-  background: #e8e6e0;
+  background: var(--color-border);
   border-radius: 3px;
 }
 
@@ -68,9 +90,9 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    #f5f4f0 25%,
-    #e8e6e0 50%,
-    #f5f4f0 75%
+    var(--color-surface-alt) 25%,
+    var(--color-border) 50%,
+    var(--color-surface-alt) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
@@ -79,17 +101,20 @@
 
 /* ── Quill editor overrides ────────────────────────────────── */
 .ql-toolbar.ql-snow {
-  border: 1px solid #e8e6e0 !important;
+  border: 1px solid var(--color-border) !important;
   border-bottom: none !important;
   border-radius: 4px 4px 0 0;
+  background: var(--color-surface);
 }
 
 .ql-container.ql-snow {
-  border: 1px solid #e8e6e0 !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 0 0 4px 4px;
   font-family: 'Lora', Georgia, serif;
   font-size: 18px;
   min-height: 400px;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
 
 .ql-editor {
@@ -98,6 +123,22 @@
 }
 
 .ql-editor.ql-blank::before {
-  color: #757575 !important;
+  color: var(--color-ink-muted) !important;
   font-style: italic !important;
+}
+
+/* Dark mode quill toolbar icons */
+.dark .ql-snow .ql-stroke {
+  stroke: var(--color-ink-muted) !important;
+}
+.dark .ql-snow .ql-fill {
+  fill: var(--color-ink-muted) !important;
+}
+.dark .ql-snow .ql-picker-label {
+  color: var(--color-ink-muted) !important;
+}
+
+/* ── Reading mode ──────────────────────────────────────────── */
+.reading-mode .hide-in-reading {
+  display: none !important;
 }

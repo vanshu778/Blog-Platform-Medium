@@ -17,6 +17,7 @@ import cors from "cors"
 import cookieParser from "cookie-parser"
 import helmet from "helmet"
 import compression from "compression"
+import schedule from "node-schedule"
 import connectDB from "./config/db.js"
 import errorMiddleware from "./middleware/error.middleware.js"
 
@@ -25,6 +26,7 @@ import postRoutes from "./routes/post.routes.js"
 import userRoutes from "./routes/user.routes.js"
 import commentRoutes from "./routes/comment.routes.js"
 import notificationRoutes from "./routes/notification.routes.js"
+import Post from "./models/Post.model.js"
 
 const NODE_ENV = process.env.NODE_ENV || "development"
 const isProduction = NODE_ENV === "production"
@@ -86,6 +88,22 @@ app.use(errorMiddleware)
 // Database connection and server startup
 connectDB()
   .then(() => {
+    // ── Scheduled post publisher — runs every minute ──────────────
+    schedule.scheduleJob("* * * * *", async () => {
+      try {
+        const now = new Date()
+        const result = await Post.updateMany(
+          { published: false, scheduledAt: { $lte: now, $ne: null } },
+          { $set: { published: true } }
+        )
+        if (result.modifiedCount > 0) {
+          console.log(`📅 Published ${result.modifiedCount} scheduled post(s)`)
+        }
+      } catch (err) {
+        console.error("Scheduled publish error:", err.message)
+      }
+    })
+
     app.on("error", (error) => {
       console.error("❌ Server error:", error)
       throw error

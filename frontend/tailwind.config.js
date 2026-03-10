@@ -1,22 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       screens: {
         desktop: '1080px',
       },
       colors: {
-        cream: '#faf9f6',
-        ink: '#1a1a1a',
-        'ink-light': '#3d3d3d',
-        'ink-muted': '#757575',
-        border: '#e8e6e0',
+        cream: 'var(--color-cream)',
+        ink: 'var(--color-ink)',
+        'ink-light': 'var(--color-ink-light)',
+        'ink-muted': 'var(--color-ink-muted)',
+        border: 'var(--color-border)',
         accent: '#1a8917',
         'accent-hover': '#156912',
         danger: '#c0392b',
-        surface: '#ffffff',
-        'surface-alt': '#f5f4f0',
+        surface: 'var(--color-surface)',
+        'surface-alt': 'var(--color-surface-alt)',
       },
       fontFamily: {
         serif: ['Lora', 'Georgia', 'serif'],

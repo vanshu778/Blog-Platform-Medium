@@ -56,7 +56,7 @@ function NotifItem({ notif, onClick }) {
 
   const getLink = () => {
     if (notif.type === 'follow') return `/${senderUsername}`
-    if (postSlug) return `/post/${postSlug}`
+    if (postSlug) return `/blog/${postSlug}`
     return '/'
   }
 

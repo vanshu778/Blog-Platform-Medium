@@ -109,7 +109,7 @@ export default function EditPostPage() {
         tags: tags.map((t) => t.toLowerCase()),
       })
       toast.success('Story updated!')
-      navigate(`/post/${res.data.slug}`)
+      navigate(`/blog/${res.data.slug}`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update')
     } finally {

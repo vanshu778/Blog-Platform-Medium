@@ -178,3 +178,110 @@ export const searchUsers = async (req, res, next) => {
     next(err)
   }
 }
+
+// ─── getCollections ─────────────────────────────────────────────────────────────
+export const getCollections = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select("collections")
+      .populate("collections.posts", "title slug coverImage excerpt author readTime createdAt")
+
+    // Populate author in each post
+    await User.populate(user, {
+      path: "collections.posts.author",
+      select: "name username avatar",
+    })
+
+    res.status(200).json({ collections: user.collections || [] })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── createCollection ───────────────────────────────────────────────────────────
+export const createCollection = async (req, res, next) => {
+  try {
+    const { name } = req.body
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Collection name is required" })
+    }
+
+    const user = await User.findById(req.user._id)
+    const exists = user.collections?.some(
+      (c) => c.name.toLowerCase() === name.trim().toLowerCase()
+    )
+    if (exists) {
+      return res.status(400).json({ message: "Collection already exists" })
+    }
+
+    user.collections.push({ name: name.trim(), posts: [] })
+    await user.save()
+
+    const newCollection = user.collections[user.collections.length - 1]
+    res.status(201).json(newCollection)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── deleteCollection ───────────────────────────────────────────────────────────
+export const deleteCollection = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+    const idx = user.collections.findIndex(
+      (c) => c._id.toString() === req.params.collectionId
+    )
+    if (idx === -1) {
+      return res.status(404).json({ message: "Collection not found" })
+    }
+
+    user.collections.splice(idx, 1)
+    await user.save()
+    res.status(200).json({ message: "Collection deleted" })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── addToCollection ──────────────────────────────────────────────────────────
+export const addToCollection = async (req, res, next) => {
+  try {
+    const { postId } = req.body
+    const user = await User.findById(req.user._id)
+    const collection = user.collections.id(req.params.collectionId)
+
+    if (!collection) {
+      return res.status(404).json({ message: "Collection not found" })
+    }
+
+    if (collection.posts.some((p) => p.toString() === postId)) {
+      return res.status(400).json({ message: "Post already in collection" })
+    }
+
+    collection.posts.push(postId)
+    await user.save()
+    res.status(200).json(collection)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── removeFromCollection ─────────────────────────────────────────────────────
+export const removeFromCollection = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+    const collection = user.collections.id(req.params.collectionId)
+
+    if (!collection) {
+      return res.status(404).json({ message: "Collection not found" })
+    }
+
+    collection.posts = collection.posts.filter(
+      (p) => p.toString() !== req.params.postId
+    )
+    await user.save()
+    res.status(200).json(collection)
+  } catch (err) {
+    next(err)
+  }
+}

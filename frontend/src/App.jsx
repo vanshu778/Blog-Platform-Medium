@@ -16,6 +16,9 @@ import BookmarksPage from './pages/BookmarksPage'
 import EditPostPage from './pages/EditPostPage'
 import EditProfilePage from './pages/EditProfilePage'
 import NotificationsPage from './pages/NotificationsPage'
+import TrendingPage from './pages/TrendingPage'
+import StatsPage from './pages/StatsPage'
+import CollectionsPage from './pages/CollectionsPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -81,7 +84,24 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/collections"
+          element={
+            <ProtectedRoute>
+              <CollectionsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/trending" element={<TrendingPage />} />
+        <Route
+          path="/stats"
+          element={
+            <ProtectedRoute>
+              <StatsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/notifications"
           element={
@@ -90,6 +110,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/blog/:slug" element={<PostPage />} />
         <Route path="/post/:slug" element={<PostPage />} />
         <Route path="/:username" element={<ProfilePage />} />
       </Routes>
@@ -101,9 +122,10 @@ export default function App() {
           style: {
             fontFamily: "'DM Sans', system-ui, sans-serif",
             fontSize: '14px',
-            background: '#1a1a1a',
-            color: '#faf9f6',
+            background: 'var(--color-surface)',
+            color: 'var(--color-ink)',
             borderRadius: '4px',
+            border: '1px solid var(--color-border)',
           },
         }}
       />

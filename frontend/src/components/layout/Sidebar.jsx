@@ -1,12 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-
-const TRENDING = [
-  { topic: 'Self-Driving Cars Are Coming', label: 'Technology' },
-  { topic: 'The Future of Remote Work', label: 'Culture' },
-  { topic: 'Why Designers Should Code', label: 'Design' },
-  { topic: 'Fusion Energy Breakthrough', label: 'Science' },
-  { topic: 'Writing Better First Drafts', label: 'Writing' },
-]
+import api from '../../utils/api'
 
 const DISCOVER_TAGS = [
   'Technology',
@@ -34,6 +28,19 @@ const FOOTER_LINKS = [
 ]
 
 export default function Sidebar() {
+  const [trending, setTrending] = useState([])
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const res = await api.get('/posts/trending', { params: { limit: 5 } })
+        setTrending(res.data)
+      } catch {
+        // silently fail, show empty
+      }
+    }
+    fetchTrending()
+  }, [])
   return (
     <aside className="w-[300px] font-sans sticky top-[88px] self-start hidden lg:block">
       {/* Trending Topics */}
@@ -41,26 +48,32 @@ export default function Sidebar() {
         <h3 className="font-serif text-lg font-semibold text-ink mb-4">
           Trending on Medium
         </h3>
-        <ol className="list-none p-0 m-0 flex flex-col gap-1.5">
-          {TRENDING.map((item, i) => (
-            <li
-              key={item.topic}
-              className="flex items-baseline gap-2.5 py-2.5 border-b border-border last:border-b-0 cursor-pointer"
-            >
-              <span className="text-[28px] font-bold text-border leading-none min-w-[24px]">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              <div className="flex-1">
-                <p className="text-[13px] text-ink-muted mb-0.5">
-                  {item.label}
-                </p>
-                <p className="text-[15px] font-semibold text-ink leading-tight">
-                  {item.topic}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        {trending.length === 0 ? (
+          <p className="text-sm text-ink-muted">No trending posts yet.</p>
+        ) : (
+          <ol className="list-none p-0 m-0 flex flex-col gap-1.5">
+            {trending.map((item, i) => (
+              <li key={item._id}>
+                <Link
+                  to={`/blog/${item.slug}`}
+                  className="flex items-baseline gap-2.5 py-2.5 border-b border-border last:border-b-0"
+                >
+                  <span className="text-[28px] font-bold text-border leading-none min-w-[24px]">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-[13px] text-ink-muted mb-0.5">
+                      {item.tags?.[0] || 'General'}
+                    </p>
+                    <p className="text-[15px] font-semibold text-ink leading-tight line-clamp-2">
+                      {item.title}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
 
       {/* Discover Tags */}
