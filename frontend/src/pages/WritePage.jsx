@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
@@ -26,31 +26,51 @@ export default function WritePage() {
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
   const [showSchedule, setShowSchedule] = useState(false)
   const [scheduledAt, setScheduledAt] = useState('')
+
+  // Refs to hold latest values — auto-save reads these without recreating interval
+  const draftRef = useRef({ title: '', content: '', coverImage: '', tags: [] })
+  const draftIdRef = useRef(null)
   const lastSavedRef = useRef({ title: '', content: '' })
+  const savingRef = useRef(false)
 
-  // Auto-save every 5 seconds
-  const autoSave = useCallback(async () => {
-    if (!title.trim() && (!content.trim() || content === '<p><br></p>')) return
-    if (title === lastSavedRef.current.title && content === lastSavedRef.current.content) return
-
-    try {
-      setAutoSaveStatus('Saving...')
-      const body = { title, content, coverImage, tags: tags.map((t) => t.toLowerCase()) }
-      if (draftId) body.id = draftId
-      const res = await api.put(`/posts/draft/${draftId || 'new'}`, body)
-      if (!draftId && res.data._id) setDraftId(res.data._id)
-      lastSavedRef.current = { title, content }
-      setAutoSaveStatus('Draft saved')
-      setTimeout(() => setAutoSaveStatus(''), 2000)
-    } catch {
-      setAutoSaveStatus('')
-    }
-  }, [title, content, coverImage, tags, draftId])
-
+  // Keep refs in sync with state
   useEffect(() => {
-    const timer = setInterval(autoSave, 5000)
+    draftRef.current = { title, content, coverImage, tags: tags.map((t) => t.toLowerCase()) }
+  }, [title, content, coverImage, tags])
+  useEffect(() => { draftIdRef.current = draftId }, [draftId])
+
+  // Stable auto-save interval — runs every 3 seconds, never resets
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const { title: t, content: c, coverImage: img, tags: tg } = draftRef.current
+      // Don't save if nothing typed or already saving
+      if ((!t.trim() && (!c.trim() || c === '<p><br></p>')) || savingRef.current) return
+      // Don't save if nothing changed
+      if (t === lastSavedRef.current.title && c === lastSavedRef.current.content) return
+
+      savingRef.current = true
+      setAutoSaveStatus('Saving...')
+      try {
+        const id = draftIdRef.current
+        const res = await api.put(`/posts/draft/${id || 'new'}`, {
+          title: t, content: c, coverImage: img, tags: tg,
+        })
+        if (!id && res.data._id) {
+          draftIdRef.current = res.data._id
+          setDraftId(res.data._id)
+        }
+        lastSavedRef.current = { title: t, content: c }
+        setAutoSaveStatus('Draft saved')
+        setTimeout(() => setAutoSaveStatus(''), 2000)
+      } catch {
+        setAutoSaveStatus('Save failed')
+        setTimeout(() => setAutoSaveStatus(''), 2000)
+      } finally {
+        savingRef.current = false
+      }
+    }, 3000)
     return () => clearInterval(timer)
-  }, [autoSave])
+  }, []) // empty deps — interval runs once, reads refs
 
   const modules = useMemo(
     () => ({

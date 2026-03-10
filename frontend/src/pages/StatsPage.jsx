@@ -6,14 +6,15 @@ import { getAvatarUrl } from '../utils/avatar'
 export default function StatsPage() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const res = await api.get('/posts/analytics')
         setStats(res.data)
-      } catch {
-        // silently fail
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load analytics')
       } finally {
         setLoading(false)
       }
@@ -38,7 +39,8 @@ export default function StatsPage() {
   if (!stats) {
     return (
       <div className="max-w-[1192px] mx-auto px-6 pt-8 text-center py-20">
-        <p className="text-ink-muted">Failed to load analytics.</p>
+        <p className="text-5xl mb-4">📊</p>
+        <p className="text-ink-muted">{error || 'No analytics data available yet.'}</p>
       </div>
     )
   }

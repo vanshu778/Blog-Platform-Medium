@@ -227,16 +227,14 @@ export const createCollection = async (req, res, next) => {
 // ─── deleteCollection ───────────────────────────────────────────────────────────
 export const deleteCollection = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id)
-    const idx = user.collections.findIndex(
-      (c) => c._id.toString() === req.params.collectionId
+    const result = await User.findByIdAndUpdate(
+      req.user._id,
+      { $pull: { collections: { _id: req.params.collectionId } } },
+      { new: true, runValidators: false }
     )
-    if (idx === -1) {
+    if (!result) {
       return res.status(404).json({ message: "Collection not found" })
     }
-
-    user.collections.splice(idx, 1)
-    await user.save()
     res.status(200).json({ message: "Collection deleted" })
   } catch (err) {
     next(err)

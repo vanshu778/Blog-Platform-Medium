@@ -34,7 +34,7 @@ export default function Sidebar() {
     const fetchTrending = async () => {
       try {
         const res = await api.get('/posts/trending', { params: { limit: 5 } })
-        setTrending(res.data)
+        setTrending(res.data.posts || [])
       } catch {
         // silently fail, show empty
       }

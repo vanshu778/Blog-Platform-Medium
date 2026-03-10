@@ -445,12 +445,8 @@ export const saveDraft = async (req, res, next) => {
     }
 
     // Create new draft
-    if (!title || !title.trim()) {
-      return res.status(400).json({ message: "Title is required for draft" })
-    }
-
     const draft = await Post.create({
-      title: title || "Untitled",
+      title: title?.trim() || "Untitled",
       content: content || "",
       tags: tags || [],
       coverImage: coverImage || "",

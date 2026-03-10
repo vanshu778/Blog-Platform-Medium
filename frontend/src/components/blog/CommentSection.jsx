@@ -327,8 +327,8 @@ export default function CommentSection({ postId }) {
       setComments((prev) => [...prev, { ...res.data, replies: [] }])
       setContent('')
       toast.success('Response posted!')
-    } catch {
-      toast.error('Failed to post comment')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to post comment')
     } finally {
       setSubmitting(false)
     }
@@ -348,8 +348,8 @@ export default function CommentSection({ postId }) {
       )
       toast.success('Reply posted!')
       return true
-    } catch {
-      toast.error('Failed to post reply')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to post reply')
       return false
     }
   }
@@ -373,8 +373,8 @@ export default function CommentSection({ postId }) {
       )
       toast.success('Comment updated!')
       return true
-    } catch {
-      toast.error('Failed to update comment')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update comment')
       return false
     }
   }

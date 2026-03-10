@@ -22,7 +22,7 @@ const router = express.Router()
 
 // Static routes first
 router.get("/trending", getTrending)
-router.get("/analytics", getAnalytics)
+router.get("/analytics", protect, getAnalytics)
 router.get("/recommended", protect, getRecommended)
 router.get("/drafts", protect, getUserDrafts)
 router.get("/search", searchPosts)

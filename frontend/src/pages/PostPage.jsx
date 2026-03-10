@@ -51,7 +51,8 @@ export default function PostPage() {
     const fetchRecommended = async () => {
       try {
         const res = await api.get('/posts/recommended')
-        setRecommended(res.data.filter((p) => p.slug !== slug).slice(0, 3))
+        const posts = res.data.posts || res.data || []
+        setRecommended(posts.filter((p) => p.slug !== slug).slice(0, 3))
       } catch {
         // silently fail
       }
