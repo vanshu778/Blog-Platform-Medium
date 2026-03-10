@@ -15,6 +15,7 @@ import SearchPage from './pages/SearchPage'
 import BookmarksPage from './pages/BookmarksPage'
 import EditPostPage from './pages/EditPostPage'
 import EditProfilePage from './pages/EditProfilePage'
+import NotificationsPage from './pages/NotificationsPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -81,6 +82,14 @@ export default function App() {
           }
         />
         <Route path="/search" element={<SearchPage />} />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/post/:slug" element={<PostPage />} />
         <Route path="/:username" element={<ProfilePage />} />
       </Routes>

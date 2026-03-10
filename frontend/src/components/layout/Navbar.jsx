@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarUrl } from '../../utils/avatar'
+import NotificationBell from '../ui/NotificationBell'
 
 export default function Navbar({ onMenuToggle, isLanding }) {
   const { user, logout } = useAuth()
@@ -137,6 +138,9 @@ export default function Navbar({ onMenuToggle, isLanding }) {
                 </Link>
               )}
 
+              {/* Notification bell */}
+              <NotificationBell />
+
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -164,6 +168,13 @@ export default function Navbar({ onMenuToggle, isLanding }) {
                       className="block px-4 py-2.5 text-sm text-ink-light hover:bg-surface-alt transition-colors"
                     >
                       New Story
+                    </Link>
+                    <Link
+                      to="/notifications"
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-ink-light hover:bg-surface-alt transition-colors"
+                    >
+                      Notifications
                     </Link>
                     <Link
                       to="/bookmarks"
