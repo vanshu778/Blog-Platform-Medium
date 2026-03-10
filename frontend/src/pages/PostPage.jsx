@@ -146,20 +146,6 @@ export default function PostPage() {
           </svg>
         )}
       </button>
-      {/* Tags */}
-      {post.tags?.length > 0 && (
-        <div className="flex gap-2 mb-4">
-          {post.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-xs uppercase tracking-wider text-accent font-medium"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* Title */}
       <h1 className="font-serif text-[clamp(28px,5vw,44px)] font-bold text-ink leading-tight mb-6">
         {post.title}
@@ -238,12 +224,42 @@ export default function PostPage() {
         dangerouslySetInnerHTML={{ __html: post.content }}
       />
 
-      {/* Reaction bar */}
-      <div className="border-t border-b border-border py-6 my-10 flex items-center justify-between hide-in-reading">
+      {/* Tags — Medium style pill buttons below content */}
+      {post.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-10 mb-2">
+          {post.tags.map((tag) => (
+            <Link
+              key={tag}
+              to={`/search?q=${encodeURIComponent(tag)}`}
+              className="text-sm px-4 py-2 rounded-full bg-surface-alt text-ink-muted hover:text-ink transition-colors"
+            >
+              {tag.charAt(0).toUpperCase() + tag.slice(1)}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Reaction bar — Medium style */}
+      <div className="border-t border-b border-border py-3 my-10 flex items-center justify-between hide-in-reading">
         <ReactionBar post={post} />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <AddToCollection postId={post._id} />
           <BookmarkButton postId={post._id} />
+          {/* Share button */}
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href)
+              toast.success('Link copied!')
+            }}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full text-ink-muted hover:text-ink transition-colors"
+            title="Copy link"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -252,39 +268,56 @@ export default function PostPage() {
         <CommentSection postId={post._id} />
       </div>
 
-      {/* Author bio section */}
-      <div className="flex items-start gap-4 bg-surface-alt rounded-lg p-6 hide-in-reading">
-        <Link to={`/${authorUsername}`} className="flex-shrink-0">
-          <img
-            src={avatarUrl}
-            alt={authorName}
-            className="w-16 h-16 rounded-full object-cover"
-          />
-        </Link>
-        <div className="flex-1">
-          <Link
-            to={`/${authorUsername}`}
-            className="font-serif text-lg font-semibold text-ink hover:underline"
-          >
-            {authorName}
-          </Link>
-          {post.author?.bio && (
-            <p className="text-sm text-ink-muted mt-1 leading-relaxed">
-              {post.author.bio}
-            </p>
-          )}
-          {!isOwnPost && user && (
-            <button
-              onClick={handleFollow}
-              className={`mt-3 text-sm px-4 py-1.5 rounded-full border transition-all ${
-                following
-                  ? 'border-border text-ink-muted hover:border-ink-muted'
-                  : 'bg-accent text-white border-accent hover:bg-accent-hover'
-              }`}
-            >
-              {following ? 'Following' : 'Follow'}
-            </button>
-          )}
+      {/* Author bio section — Medium style */}
+      <div className="border-t border-border pt-8 mt-4 hide-in-reading">
+        <p className="text-sm text-ink-muted mb-4">Written by</p>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-4">
+            <Link to={`/${authorUsername}`} className="flex-shrink-0">
+              <img
+                src={avatarUrl}
+                alt={authorName}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            </Link>
+            <div>
+              <Link
+                to={`/${authorUsername}`}
+                className="font-serif text-lg font-semibold text-ink hover:underline"
+              >
+                {authorName}
+              </Link>
+              <p className="text-sm text-ink-muted mt-0.5">
+                {followerCount} {followerCount === 1 ? 'follower' : 'followers'} · {post.author?.following?.length || 0} following
+              </p>
+              {post.author?.bio && (
+                <p className="text-sm text-ink-muted mt-2 leading-relaxed max-w-lg">
+                  {post.author.bio}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            {isOwnPost ? (
+              <Link
+                to="/settings"
+                className="text-sm text-ink-light border border-border px-4 py-1.5 rounded-full hover:bg-surface-alt transition-all"
+              >
+                Edit profile
+              </Link>
+            ) : user ? (
+              <button
+                onClick={handleFollow}
+                className={`text-sm px-4 py-1.5 rounded-full border transition-all ${
+                  following
+                    ? 'border-border text-ink-muted hover:border-ink-muted'
+                    : 'bg-accent text-white border-accent hover:bg-accent-hover'
+                }`}
+              >
+                {following ? 'Following' : 'Follow'}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

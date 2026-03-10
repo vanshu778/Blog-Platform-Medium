@@ -71,8 +71,10 @@ export default function WritePage() {
   useEffect(() => {
     const timer = setInterval(async () => {
       const { title: t, content: c, coverImage: img, tags: tg } = draftRef.current
-      // Don't save if nothing typed or already saving
-      if ((!t.trim() && (!c.trim() || c === '<p><br></p>')) || savingRef.current) return
+      const contentEmpty = !c.trim() || c === '<p><br></p>'
+      // Don't save if nothing typed at all or already saving
+      if (!t.trim() && contentEmpty) return
+      if (savingRef.current) return
       // Don't save if nothing changed
       if (t === lastSavedRef.current.title && c === lastSavedRef.current.content) return
 

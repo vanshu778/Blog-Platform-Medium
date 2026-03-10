@@ -338,23 +338,31 @@ export const getAnalytics = async (req, res, next) => {
   try {
     const userId = req.user._id
 
-    const userPosts = await Post.find({ author: userId, published: true })
-      .select("title slug views reactions readTime createdAt tags")
+    // Get ALL posts by this user (published + drafts + scheduled) for total count
+    const allPosts = await Post.find({ author: userId })
+      .select("title slug views reactions readTime createdAt tags published scheduledAt")
       .sort({ views: -1 })
       .lean()
 
-    const totalPosts = userPosts.length
-    const totalViews = userPosts.reduce((sum, p) => sum + (p.views || 0), 0)
-    const totalReactions = userPosts.reduce((sum, p) => {
+    const publishedPosts = allPosts.filter((p) => p.published)
+    const totalPosts = allPosts.length
+    const totalViews = allPosts.reduce((sum, p) => sum + (p.views || 0), 0)
+    const totalReactions = allPosts.reduce((sum, p) => {
+      if (!p.reactions) return sum
       return sum + ["like", "love", "clap", "insightful", "funny", "celebrate"]
-        .reduce((s, r) => s + (p.reactions?.[r]?.length || 0), 0)
+        .reduce((s, r) => {
+          const arr = p.reactions[r]
+          return s + (Array.isArray(arr) ? arr.length : 0)
+        }, 0)
     }, 0)
 
     // Comment count across user's posts
-    const postIds = userPosts.map((p) => p._id)
-    const totalComments = await Comment.countDocuments({ post: { $in: postIds } })
+    const postIds = allPosts.map((p) => p._id)
+    const totalComments = postIds.length > 0
+      ? await Comment.countDocuments({ post: { $in: postIds } })
+      : 0
 
-    const mostReadPosts = userPosts.slice(0, 5)
+    const mostReadPosts = publishedPosts.slice(0, 5)
 
     res.status(200).json({
       totalPosts,
@@ -461,24 +469,25 @@ export const saveDraft = async (req, res, next) => {
         return res.status(403).json({ message: "Not authorized" })
       }
 
-      if (title !== undefined) post.title = title
-      if (content !== undefined) post.content = content
+      if (title !== undefined) post.title = title || "Untitled"
+      if (content !== undefined) post.content = content && content.trim() && content !== '<p><br></p>' ? content : "<p></p>"
       if (tags !== undefined) post.tags = tags
       if (coverImage !== undefined) post.coverImage = coverImage
 
-      const updated = await post.save()
+      const updated = await post.save({ validateModifiedOnly: true })
       return res.status(200).json({ _id: updated._id, slug: updated.slug })
     }
 
-    // Create new draft
-    const draft = await Post.create({
+    // Create new draft — bypass required validators since drafts can be incomplete
+    const draft = new Post({
       title: title?.trim() || "Untitled",
-      content: content || "",
+      content: content && content.trim() && content !== '<p><br></p>' ? content : "<p></p>",
       tags: tags || [],
       coverImage: coverImage || "",
       author: req.user._id,
       published: false,
     })
+    await draft.save({ validateBeforeSave: false })
 
     res.status(201).json({ _id: draft._id, slug: draft.slug })
   } catch (err) {

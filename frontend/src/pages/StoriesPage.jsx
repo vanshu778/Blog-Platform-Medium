@@ -24,20 +24,16 @@ export default function StoriesPage() {
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true)
-      try {
-        const [draftsRes, scheduledRes, publishedRes] = await Promise.all([
-          api.get('/posts/drafts'),
-          api.get('/posts/scheduled'),
-          api.get(`/posts/user/${user.username}`),
-        ])
-        setDrafts(draftsRes.data.drafts || [])
-        setScheduled(scheduledRes.data.posts || [])
-        setPublished(publishedRes.data.posts || [])
-      } catch {
-        toast.error('Failed to load stories')
-      } finally {
-        setLoading(false)
-      }
+      // Fetch independently so one failure doesn't break all tabs
+      const [draftsRes, scheduledRes, publishedRes] = await Promise.allSettled([
+        api.get('/posts/drafts'),
+        api.get('/posts/scheduled'),
+        api.get(`/posts/user/${user.username}`),
+      ])
+      if (draftsRes.status === 'fulfilled') setDrafts(draftsRes.value.data.drafts || [])
+      if (scheduledRes.status === 'fulfilled') setScheduled(scheduledRes.value.data.posts || [])
+      if (publishedRes.status === 'fulfilled') setPublished(publishedRes.value.data.posts || [])
+      setLoading(false)
     }
     if (user) fetchAll()
   }, [user])
@@ -151,13 +147,12 @@ export default function StoriesPage() {
       )}
 
       <ConfirmModal
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        open={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete story"
         message="Are you sure? This action cannot be undone."
-        confirmLabel="Delete"
-        danger
+        confirmText="Delete"
       />
     </div>
   )
