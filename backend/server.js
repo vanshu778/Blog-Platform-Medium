@@ -10,7 +10,9 @@ import compression from "compression"
 import path from "path"
 import { fileURLToPath } from "url"
 import connectDB from "./config/db.js"
+import validateEnv from "./config/validateEnv.js"
 import errorMiddleware from "./middleware/error.middleware.js"
+import mongoose from "mongoose"
 
 import authRoutes from "./routes/auth.routes.js"
 import postRoutes from "./routes/post.routes.js"
@@ -19,6 +21,7 @@ import commentRoutes from "./routes/comment.routes.js"
 import notificationRoutes from "./routes/notification.routes.js"
 
 dotenv.config()
+validateEnv()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -57,7 +60,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
 
 // Health check
-app.get("/api/health", (req, res) => res.json({ status: "ok" }))
+app.get("/api/health", (req, res) => {
+  const dbState = mongoose.connection.readyState
+  const dbStatus = dbState === 1 ? "connected" : "disconnected"
+  const statusCode = dbState === 1 ? 200 : 503
+  res.status(statusCode).json({ status: dbState === 1 ? "ok" : "degraded", db: dbStatus })
+})
 
 // Mount API routes
 app.use("/api/auth", authRoutes)
