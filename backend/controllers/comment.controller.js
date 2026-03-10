@@ -1,21 +1,32 @@
 // comment.controller.js
 // Full CRUD for comments + nested replies
 
+import mongoose from "mongoose"
 import Comment from "../models/Comment.model.js"
 import Post from "../models/Post.model.js"
 import Notification from "../models/Notification.model.js"
+
+// ─── Helper: validate ObjectId ────────────────────────────────────────────────
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id)
 
 // ─── getComments ──────────────────────────────────────────────────────────────
 // Returns all top-level comments for a post, each with their nested replies
 export const getComments = async (req, res, next) => {
   try {
+    const { postId } = req.params
+
+    if (!isValidId(postId)) {
+      return res.status(400).json({ message: "Invalid post ID" })
+    }
+
     // 1. Fetch all comments (top-level + replies) for the post in one query
-    const all = await Comment.find({ post: req.params.postId })
+    const all = await Comment.find({ post: postId })
       .populate("author", "name username avatar")
       .sort({ createdAt: 1 })
+      .lean()
 
     // 2. Separate top-level comments from replies
-    const topLevel = all.filter((c) => c.parentId === null || c.parentId === undefined)
+    const topLevel = []
     const repliesMap = {}
 
     all.forEach((c) => {
@@ -23,15 +34,20 @@ export const getComments = async (req, res, next) => {
         const pid = c.parentId.toString()
         if (!repliesMap[pid]) repliesMap[pid] = []
         repliesMap[pid].push(c)
+      } else {
+        topLevel.push(c)
       }
     })
 
-    // 3. Attach replies to their parent comments (plain objects)
-    const withReplies = topLevel.map((c) => {
-      const obj = c.toObject()
-      obj.replies = repliesMap[c._id.toString()] || []
-      return obj
-    })
+    // 3. Attach replies to their parent comments
+    const withReplies = topLevel.map((c) => ({
+      ...c,
+      _id: c._id.toString(),
+      replies: (repliesMap[c._id.toString()] || []).map((r) => ({
+        ...r,
+        _id: r._id.toString(),
+      })),
+    }))
 
     res.status(200).json({ comments: withReplies, total: all.length })
   } catch (err) {
@@ -44,12 +60,17 @@ export const getComments = async (req, res, next) => {
 export const addComment = async (req, res, next) => {
   try {
     const { content } = req.body
+    const { postId } = req.params
 
     if (!content || !content.trim()) {
       return res.status(400).json({ message: "Comment cannot be empty" })
     }
 
-    const post = await Post.findById(req.params.postId)
+    if (!isValidId(postId)) {
+      return res.status(400).json({ message: "Invalid post ID" })
+    }
+
+    const post = await Post.findById(postId)
     if (!post) {
       return res.status(404).json({ message: "Post not found" })
     }
@@ -57,7 +78,7 @@ export const addComment = async (req, res, next) => {
     const comment = await Comment.create({
       content: content.trim(),
       author: req.user._id,
-      post: req.params.postId,
+      post: postId,
       parentId: null,
     })
 
@@ -65,15 +86,20 @@ export const addComment = async (req, res, next) => {
 
     // Notify post author (unless commenting on own post)
     if (post.author.toString() !== req.user._id.toString()) {
-      await Notification.create({
-        recipient: post.author,
-        sender: req.user._id,
-        type: "comment",
-        post: req.params.postId,
-      })
+      try {
+        await Notification.create({
+          recipient: post.author,
+          sender: req.user._id,
+          type: "comment",
+          post: postId,
+        })
+      } catch {
+        // Notification failure should not crash comment creation
+      }
     }
 
     const obj = comment.toObject()
+    obj._id = obj._id.toString()
     obj.replies = []
 
     res.status(201).json(obj)
@@ -83,8 +109,7 @@ export const addComment = async (req, res, next) => {
 }
 
 // ─── addReply ─────────────────────────────────────────────────────────────────
-// Adds a reply to an existing comment (one level deep — replies to replies go
-// under the same top-level parent for simplicity)
+// Adds a reply to an existing comment
 export const addReply = async (req, res, next) => {
   try {
     const { content } = req.body
@@ -94,20 +119,23 @@ export const addReply = async (req, res, next) => {
       return res.status(400).json({ message: "Reply cannot be empty" })
     }
 
-    const parent = await Comment.findById(commentId).populate("post")
+    if (!isValidId(commentId)) {
+      return res.status(400).json({ message: "Invalid comment ID" })
+    }
+
+    // Don't populate — just get the raw document
+    const parent = await Comment.findById(commentId)
     if (!parent) {
       return res.status(404).json({ message: "Comment not found" })
     }
 
     // If the parent itself is a reply, attach to the grandparent (flat nesting)
-    const actualParentId = parent.parentId
-      ? parent.parentId.toString()
-      : commentId
+    const actualParentId = parent.parentId || commentId
 
     const reply = await Comment.create({
       content: content.trim(),
       author: req.user._id,
-      post: parent.post._id,
+      post: parent.post,        // use raw ObjectId, no populate needed
       parentId: actualParentId,
     })
 
@@ -115,15 +143,21 @@ export const addReply = async (req, res, next) => {
 
     // Notify original commenter (unless replying to own comment)
     if (parent.author.toString() !== req.user._id.toString()) {
-      await Notification.create({
-        recipient: parent.author,
-        sender: req.user._id,
-        type: "comment",
-        post: parent.post._id,
-      })
+      try {
+        await Notification.create({
+          recipient: parent.author,
+          sender: req.user._id,
+          type: "comment",
+          post: parent.post,
+        })
+      } catch {
+        // Notification failure should not crash reply creation
+      }
     }
 
-    res.status(201).json(reply.toObject())
+    const obj = reply.toObject()
+    obj._id = obj._id.toString()
+    res.status(201).json(obj)
   } catch (err) {
     next(err)
   }
@@ -140,6 +174,10 @@ export const editComment = async (req, res, next) => {
       return res.status(400).json({ message: "Comment cannot be empty" })
     }
 
+    if (!isValidId(commentId)) {
+      return res.status(400).json({ message: "Invalid comment ID" })
+    }
+
     const comment = await Comment.findById(commentId)
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" })
@@ -149,13 +187,16 @@ export const editComment = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" })
     }
 
-    comment.content = content.trim()
-    comment.isEdited = true
-    await comment.save()
+    // Use findByIdAndUpdate to avoid full-document revalidation on old docs
+    const updated = await Comment.findByIdAndUpdate(
+      commentId,
+      { content: content.trim(), isEdited: true },
+      { new: true, runValidators: false }
+    ).populate("author", "name username avatar")
 
-    await comment.populate("author", "name username avatar")
-
-    res.status(200).json(comment.toObject())
+    const obj = updated.toObject()
+    obj._id = obj._id.toString()
+    res.status(200).json(obj)
   } catch (err) {
     next(err)
   }
@@ -165,7 +206,13 @@ export const editComment = async (req, res, next) => {
 // Deletes a comment (and all its replies if it's a top-level comment)
 export const deleteComment = async (req, res, next) => {
   try {
-    const comment = await Comment.findById(req.params.commentId)
+    const { commentId } = req.params
+
+    if (!isValidId(commentId)) {
+      return res.status(400).json({ message: "Invalid comment ID" })
+    }
+
+    const comment = await Comment.findById(commentId)
 
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" })
@@ -182,7 +229,7 @@ export const deleteComment = async (req, res, next) => {
 
     await comment.deleteOne()
 
-    res.status(200).json({ message: "Comment deleted", id: req.params.commentId })
+    res.status(200).json({ message: "Comment deleted", id: commentId })
   } catch (err) {
     next(err)
   }
