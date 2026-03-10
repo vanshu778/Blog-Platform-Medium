@@ -91,7 +91,7 @@ export default function LeftSidebar({ isOpen, onClose }) {
     ...(user
       ? [
           { label: 'Profile', icon: <ProfileIcon />, to: `/${user.username}` },
-          { label: 'Stories', icon: <StoriesIcon />, to: '/write' },
+          { label: 'Stories', icon: <StoriesIcon />, to: '/stories' },
         ]
       : []),
     { label: 'Trending', icon: <TrendingIcon />, to: '/trending' },

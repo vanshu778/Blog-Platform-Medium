@@ -19,6 +19,7 @@ import NotificationsPage from './pages/NotificationsPage'
 import TrendingPage from './pages/TrendingPage'
 import StatsPage from './pages/StatsPage'
 import CollectionsPage from './pages/CollectionsPage'
+import StoriesPage from './pages/StoriesPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -89,6 +90,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CollectionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stories"
+          element={
+            <ProtectedRoute>
+              <StoriesPage />
             </ProtectedRoute>
           }
         />

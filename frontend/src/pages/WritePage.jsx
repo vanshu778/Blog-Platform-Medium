@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 import api from '../utils/api'
@@ -17,6 +17,7 @@ const TAG_OPTIONS = [
 
 export default function WritePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [coverImage, setCoverImage] = useState('')
@@ -26,6 +27,33 @@ export default function WritePage() {
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
   const [showSchedule, setShowSchedule] = useState(false)
   const [scheduledAt, setScheduledAt] = useState('')
+
+  // Load existing draft if ?draft=<id> is in the URL
+  useEffect(() => {
+    const id = searchParams.get('draft')
+    if (!id) return
+    const loadDraft = async () => {
+      try {
+        const res = await api.get(`/posts/drafts`)
+        const draft = (res.data.drafts || []).find((d) => d._id === id)
+        if (!draft) return
+        // Fetch full content by fetching the draft as a post (using slug)
+        const full = await api.get(`/posts/${draft.slug}`)
+        setTitle(full.data.title || '')
+        setContent(full.data.content || '')
+        setCoverImage(full.data.coverImage || '')
+        setTags(full.data.tags || [])
+        setDraftId(full.data._id)
+        if (full.data.scheduledAt) {
+          setShowSchedule(true)
+          setScheduledAt(new Date(full.data.scheduledAt).toISOString().slice(0, 16))
+        }
+      } catch {
+        // silently fail — just start fresh
+      }
+    }
+    loadDraft()
+  }, [searchParams])
 
   // Refs to hold latest values — auto-save reads these without recreating interval
   const draftRef = useRef({ title: '', content: '', coverImage: '', tags: [] })

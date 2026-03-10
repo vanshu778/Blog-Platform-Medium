@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import ReactionBar from '../components/blog/ReactionBar'
 import CommentSection from '../components/blog/CommentSection'
 import BookmarkButton from '../components/blog/BookmarkButton'
+import AddToCollection from '../components/blog/AddToCollection'
 import ConfirmModal from '../components/ui/ConfirmModal'
 
 export default function PostPage() {
@@ -240,7 +241,10 @@ export default function PostPage() {
       {/* Reaction bar */}
       <div className="border-t border-b border-border py-6 my-10 flex items-center justify-between hide-in-reading">
         <ReactionBar post={post} />
-        <BookmarkButton postId={post._id} />
+        <div className="flex items-center gap-2">
+          <AddToCollection postId={post._id} />
+          <BookmarkButton postId={post._id} />
+        </div>
       </div>
 
       {/* Comments */}

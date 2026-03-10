@@ -333,27 +333,53 @@ export const getTrending = async (req, res, next) => {
 }
 
 // ─── getAnalytics ─────────────────────────────────────────────────────────────
-// Platform-wide analytics
+// Personal analytics — only the logged-in user's posts
 export const getAnalytics = async (req, res, next) => {
   try {
-    const [totalUsers, totalPosts, recentUsers, mostReadPosts] = await Promise.all([
-      User.countDocuments(),
-      Post.countDocuments({ published: true }),
-      // Daily active users = users created in the last 24h (approximation)
-      User.countDocuments({ createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
-      Post.find({ published: true })
-        .sort({ views: -1 })
-        .limit(5)
-        .populate("author", "name username avatar")
-        .select("title slug views readTime createdAt author tags"),
-    ])
+    const userId = req.user._id
+
+    const userPosts = await Post.find({ author: userId, published: true })
+      .select("title slug views reactions readTime createdAt tags")
+      .sort({ views: -1 })
+      .lean()
+
+    const totalPosts = userPosts.length
+    const totalViews = userPosts.reduce((sum, p) => sum + (p.views || 0), 0)
+    const totalReactions = userPosts.reduce((sum, p) => {
+      return sum + ["like", "love", "clap", "insightful", "funny", "celebrate"]
+        .reduce((s, r) => s + (p.reactions?.[r]?.length || 0), 0)
+    }, 0)
+
+    // Comment count across user's posts
+    const postIds = userPosts.map((p) => p._id)
+    const totalComments = await Comment.countDocuments({ post: { $in: postIds } })
+
+    const mostReadPosts = userPosts.slice(0, 5)
 
     res.status(200).json({
-      totalUsers,
       totalPosts,
-      dailyActiveUsers: recentUsers,
+      totalViews,
+      totalReactions,
+      totalComments,
       mostReadPosts,
     })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── getScheduledPosts ────────────────────────────────────────────────────────
+export const getScheduledPosts = async (req, res, next) => {
+  try {
+    const posts = await Post.find({
+      author: req.user._id,
+      published: false,
+      scheduledAt: { $ne: null },
+    })
+      .select("title slug excerpt scheduledAt createdAt updatedAt")
+      .sort({ scheduledAt: 1 })
+
+    res.status(200).json({ posts })
   } catch (err) {
     next(err)
   }

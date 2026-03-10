@@ -15,6 +15,7 @@ import {
   getRecommended,
   saveDraft,
   getUserDrafts,
+  getScheduledPosts,
 } from "../controllers/post.controller.js"
 import { protect, optionalAuth } from "../middleware/auth.middleware.js"
 
@@ -25,6 +26,7 @@ router.get("/trending", getTrending)
 router.get("/analytics", protect, getAnalytics)
 router.get("/recommended", protect, getRecommended)
 router.get("/drafts", protect, getUserDrafts)
+router.get("/scheduled", protect, getScheduledPosts)
 router.get("/search", searchPosts)
 router.get("/user/:username", getUserPosts)
 router.get("/", optionalAuth, getFeed)

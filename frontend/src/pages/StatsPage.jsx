@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../utils/api'
-import { getAvatarUrl } from '../utils/avatar'
 
 export default function StatsPage() {
   const [stats, setStats] = useState(null)
@@ -26,8 +25,8 @@ export default function StatsPage() {
     return (
       <div className="max-w-[1192px] mx-auto px-6 pt-8">
         <div className="skeleton w-48 h-8 mb-8" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-          {[...Array(3)].map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-10">
+          {[...Array(4)].map((_, i) => (
             <div key={i} className="skeleton h-24 rounded-lg" />
           ))}
         </div>
@@ -51,57 +50,53 @@ export default function StatsPage() {
       <div className="pb-6 mb-6 border-b border-border">
         <div className="flex items-center gap-3 mb-2">
           <span className="text-3xl">📈</span>
-          <h1 className="font-serif text-3xl font-bold text-ink">Platform Stats</h1>
+          <h1 className="font-serif text-3xl font-bold text-ink">Your Stats</h1>
         </div>
-        <p className="text-sm text-ink-muted">An overview of the community.</p>
+        <p className="text-sm text-ink-muted">Performance overview of your stories.</p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        <StatCard label="Total Users" value={stats.totalUsers} icon="👥" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-10">
         <StatCard label="Total Posts" value={stats.totalPosts} icon="📝" />
-        <StatCard label="New Users (24h)" value={stats.dailyActiveUsers} icon="🆕" />
+        <StatCard label="Total Views" value={stats.totalViews} icon="👁️" />
+        <StatCard label="Total Reactions" value={stats.totalReactions} icon="❤️" />
+        <StatCard label="Total Comments" value={stats.totalComments} icon="💬" />
       </div>
 
       {/* Most read posts */}
       <div className="mb-10">
         <h2 className="font-serif text-xl font-semibold text-ink mb-5">
-          Most Read Posts
+          Your Most Read Stories
         </h2>
-        <div className="space-y-1">
-          {stats.mostReadPosts?.map((post, i) => (
-            <Link
-              key={post._id}
-              to={`/blog/${post.slug}`}
-              className="flex items-center gap-4 py-3 px-4 rounded-lg hover:bg-surface-alt transition-colors"
-            >
-              <span className="text-2xl font-bold text-border font-serif min-w-[32px]">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                {post.author && (
-                  <img
-                    src={getAvatarUrl(post.author.avatar, post.author.name)}
-                    alt={post.author.name}
-                    className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="min-w-0">
+        {stats.mostReadPosts?.length === 0 ? (
+          <p className="text-ink-muted text-sm py-8 text-center">No published stories yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {stats.mostReadPosts?.map((post, i) => (
+              <Link
+                key={post._id}
+                to={`/blog/${post.slug}`}
+                className="flex items-center gap-4 py-3 px-4 rounded-lg hover:bg-surface-alt transition-colors"
+              >
+                <span className="text-2xl font-bold text-border font-serif min-w-[32px]">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-ink truncate">
                     {post.title}
                   </p>
                   <p className="text-xs text-ink-muted">
-                    {post.author?.name} · {post.readTime} min read
+                    {post.readTime} min read · {post.tags?.join(', ') || 'No tags'}
                   </p>
                 </div>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-sm font-semibold text-ink">{post.views || 0}</p>
-                <p className="text-xs text-ink-muted">views</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-semibold text-ink">{post.views || 0}</p>
+                  <p className="text-xs text-ink-muted">views</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
