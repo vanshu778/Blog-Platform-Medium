@@ -114,12 +114,16 @@ export const updatePost = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" })
     }
 
-    const { title, content, tags, coverImage } = req.body
+    const { title, content, tags, coverImage, published, scheduledAt } = req.body
 
     if (title !== undefined) post.title = title
     if (content !== undefined) post.content = content
     if (tags !== undefined) post.tags = tags
     if (coverImage !== undefined) post.coverImage = coverImage
+    if (published !== undefined) post.published = published
+    if (scheduledAt !== undefined) {
+      post.scheduledAt = scheduledAt ? new Date(scheduledAt) : null
+    }
 
     const updated = await post.save()
     await updated.populate("author", "name username avatar")

@@ -57,10 +57,10 @@ export default function StatsPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-10">
-        <StatCard label="Total Posts" value={stats.totalPosts} icon="📝" />
-        <StatCard label="Total Views" value={stats.totalViews} icon="👁️" />
-        <StatCard label="Total Reactions" value={stats.totalReactions} icon="❤️" />
-        <StatCard label="Total Comments" value={stats.totalComments} icon="💬" />
+        <StatCard label="Total Posts" value={stats.totalPosts ?? 0} icon="📝" />
+        <StatCard label="Total Views" value={stats.totalViews ?? 0} icon="👁️" />
+        <StatCard label="Total Reactions" value={stats.totalReactions ?? 0} icon="❤️" />
+        <StatCard label="Total Comments" value={stats.totalComments ?? 0} icon="💬" />
       </div>
 
       {/* Most read posts */}
@@ -103,11 +103,12 @@ export default function StatsPage() {
 }
 
 function StatCard({ label, value, icon }) {
+  const displayValue = typeof value === 'number' ? value.toLocaleString() : '0'
   return (
     <div className="bg-surface border border-border rounded-lg p-6 flex items-center gap-4">
       <span className="text-3xl">{icon}</span>
       <div>
-        <p className="text-2xl font-bold text-ink">{value?.toLocaleString() || 0}</p>
+        <p className="text-2xl font-bold text-ink">{displayValue}</p>
         <p className="text-sm text-ink-muted">{label}</p>
       </div>
     </div>

@@ -149,17 +149,34 @@ export default function WritePage() {
         coverImage,
         tags: tags.map((t) => t.toLowerCase()),
       }
-      if (showSchedule && scheduledAt) {
-        body.scheduledAt = new Date(scheduledAt).toISOString()
-        body.published = false
+
+      let res
+      if (draftId) {
+        // Update existing draft → publish or schedule it
+        if (showSchedule && scheduledAt) {
+          body.scheduledAt = new Date(scheduledAt).toISOString()
+          body.published = false
+        } else {
+          body.published = true
+          body.scheduledAt = null
+        }
+        res = await api.put(`/posts/${draftId}`, body)
+      } else {
+        // No draft — create new post
+        if (showSchedule && scheduledAt) {
+          body.scheduledAt = new Date(scheduledAt).toISOString()
+          body.published = false
+        }
+        res = await api.post('/posts', body)
       }
-      const res = await api.post('/posts', body)
+
       if (showSchedule && scheduledAt) {
         toast.success('Story scheduled!')
+        navigate('/stories')
       } else {
         toast.success('Story published!')
+        navigate(`/blog/${res.data.slug}`)
       }
-      navigate(`/blog/${res.data.slug}`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to publish')
     } finally {
