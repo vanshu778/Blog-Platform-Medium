@@ -10,7 +10,7 @@ export const getFeed = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, tag } = req.query
 
-    const filter = { published: true }
+    const filter = { status: "published" }
 
     if (tag) {
       filter.tags = tag.toLowerCase()
@@ -65,7 +65,7 @@ export const getPost = async (req, res, next) => {
 // ─── createPost ───────────────────────────────────────────────────────────────
 export const createPost = async (req, res, next) => {
   try {
-    const { title, content, tags, coverImage, scheduledAt, published } = req.body
+    const { title, content, tags, coverImage, subtitle, scheduledAt, status } = req.body
 
     if (!title || !content) {
       return res.status(400).json({ message: "Title and content are required" })
@@ -79,6 +79,8 @@ export const createPost = async (req, res, next) => {
       author: req.user._id,
     }
 
+    if (subtitle !== undefined) postData.subtitle = subtitle
+
     // Handle scheduling
     if (scheduledAt) {
       const schedDate = new Date(scheduledAt)
@@ -86,10 +88,9 @@ export const createPost = async (req, res, next) => {
         return res.status(400).json({ message: "Scheduled date must be in the future" })
       }
       postData.scheduledAt = schedDate
-      postData.published = false
-    } else if (published === false) {
-      // Save as draft
-      postData.published = false
+      postData.status = "scheduled"
+    } else if (status === "draft") {
+      postData.status = "draft"
     }
 
     const post = await Post.create(postData)
@@ -114,13 +115,14 @@ export const updatePost = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" })
     }
 
-    const { title, content, tags, coverImage, published, scheduledAt } = req.body
+    const { title, content, tags, coverImage, subtitle, status, scheduledAt } = req.body
 
     if (title !== undefined) post.title = title
     if (content !== undefined) post.content = content
     if (tags !== undefined) post.tags = tags
     if (coverImage !== undefined) post.coverImage = coverImage
-    if (published !== undefined) post.published = published
+    if (subtitle !== undefined) post.subtitle = subtitle
+    if (status !== undefined) post.status = status
     if (scheduledAt !== undefined) {
       post.scheduledAt = scheduledAt ? new Date(scheduledAt) : null
     }
@@ -238,7 +240,7 @@ export const getUserPosts = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" })
     }
 
-    const posts = await Post.find({ author: user._id, published: true })
+    const posts = await Post.find({ author: user._id, status: "published" })
       .populate("author", "name username avatar")
       .sort({ createdAt: -1 })
 
@@ -260,7 +262,7 @@ export const searchPosts = async (req, res, next) => {
     const regex = new RegExp(q.trim(), "i")
 
     const filter = {
-      published: true,
+      status: "published",
       $or: [{ title: regex }, { excerpt: regex }, { tags: regex }],
     }
 
@@ -304,7 +306,7 @@ export const getTrending = async (req, res, next) => {
     else dateFilter.setDate(dateFilter.getDate() - 7) // default: week
 
     const posts = await Post.find({
-      published: true,
+      status: "published",
       createdAt: { $gte: dateFilter },
     })
       .populate("author", "name username avatar")
@@ -344,11 +346,11 @@ export const getAnalytics = async (req, res, next) => {
 
     // Get ALL posts by this user (published + drafts + scheduled) for total count
     const allPosts = await Post.find({ author: userId })
-      .select("title slug views reactions readTime createdAt tags published scheduledAt")
+      .select("title slug views reactions readTime createdAt tags status scheduledAt")
       .sort({ views: -1 })
       .lean()
 
-    const publishedPosts = allPosts.filter((p) => p.published)
+    const publishedPosts = allPosts.filter((p) => p.status === "published")
     const totalPosts = allPosts.length
     const totalViews = allPosts.reduce((sum, p) => sum + (p.views || 0), 0)
     const totalReactions = allPosts.reduce((sum, p) => {
@@ -385,10 +387,9 @@ export const getScheduledPosts = async (req, res, next) => {
   try {
     const posts = await Post.find({
       author: req.user._id,
-      published: false,
-      scheduledAt: { $ne: null },
+      status: "scheduled",
     })
-      .select("title slug excerpt scheduledAt createdAt updatedAt")
+      .select("title slug excerpt subtitle scheduledAt createdAt updatedAt")
       .sort({ scheduledAt: 1 })
 
     res.status(200).json({ posts })
@@ -426,7 +427,7 @@ export const getRecommended = async (req, res, next) => {
     // 3. Find posts matching those tags, excluding already-reacted ones
     const reactedIds = reactedPosts.map((p) => p._id)
     const filter = {
-      published: true,
+      status: "published",
       _id: { $nin: reactedIds },
       author: { $ne: req.user._id },
     }
@@ -443,7 +444,7 @@ export const getRecommended = async (req, res, next) => {
     if (recommended.length < 5) {
       const existingIds = [...reactedIds, ...recommended.map((p) => p._id)]
       const filler = await Post.find({
-        published: true,
+        status: "published",
         _id: { $nin: existingIds },
         author: { $ne: req.user._id },
       })
@@ -489,7 +490,7 @@ export const saveDraft = async (req, res, next) => {
       tags: tags || [],
       coverImage: coverImage || "",
       author: req.user._id,
-      published: false,
+      status: "draft",
     })
     await draft.save({ validateBeforeSave: false })
 
@@ -504,13 +505,66 @@ export const getUserDrafts = async (req, res, next) => {
   try {
     const drafts = await Post.find({
       author: req.user._id,
-      published: false,
-      scheduledAt: null,
+      status: "draft",
     })
-      .select("title slug excerpt createdAt updatedAt")
+      .select("title slug excerpt subtitle createdAt updatedAt")
       .sort({ updatedAt: -1 })
 
     res.status(200).json({ drafts })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── getMyStories ─────────────────────────────────────────────────────────────
+// Unified stories endpoint: GET /posts/stories/me?status=draft&page=1&limit=10
+export const getMyStories = async (req, res, next) => {
+  try {
+    const { status = "draft", page = 1, limit = 10 } = req.query
+
+    const validStatuses = ["draft", "published", "scheduled", "archived"]
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` })
+    }
+
+    const skip = (Number(page) - 1) * Number(limit)
+
+    const filter = { author: req.user._id, status }
+
+    const [stories, total] = await Promise.all([
+      Post.find(filter)
+        .select("title subtitle slug excerpt coverImage tags readTime views status scheduledAt reactions createdAt updatedAt")
+        .sort(status === "scheduled" ? { scheduledAt: 1 } : { updatedAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+      Post.countDocuments(filter),
+    ])
+
+    // Attach reaction + comment counts for published stories
+    if (status === "published" && stories.length > 0) {
+      const postIds = stories.map((s) => s._id)
+      const commentCounts = await Comment.aggregate([
+        { $match: { post: { $in: postIds } } },
+        { $group: { _id: "$post", count: { $sum: 1 } } },
+      ])
+      const commentMap = {}
+      commentCounts.forEach((c) => { commentMap[c._id.toString()] = c.count })
+
+      for (const s of stories) {
+        const totalReactions = ["like", "love", "clap", "insightful", "funny", "celebrate"]
+          .reduce((sum, r) => sum + (s.reactions?.[r]?.length || 0), 0)
+        s.reactionCount = totalReactions
+        s.commentCount = commentMap[s._id.toString()] || 0
+      }
+    }
+
+    res.status(200).json({
+      stories,
+      total,
+      pages: Math.ceil(total / Number(limit)),
+      currentPage: Number(page),
+    })
   } catch (err) {
     next(err)
   }

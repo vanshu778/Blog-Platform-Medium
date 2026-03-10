@@ -94,15 +94,37 @@ app.use(errorMiddleware)
 
 // Database connection and server startup
 connectDB()
-  .then(() => {
+  .then(async () => {
+    // ── One-time migration: published boolean → status enum ───────
+    try {
+      const r1 = await Post.updateMany(
+        { status: { $exists: false }, published: true },
+        { $set: { status: "published" } }
+      )
+      const r2 = await Post.updateMany(
+        { status: { $exists: false }, published: false, scheduledAt: { $ne: null } },
+        { $set: { status: "scheduled" } }
+      )
+      const r3 = await Post.updateMany(
+        { status: { $exists: false }, published: false },
+        { $set: { status: "draft" } }
+      )
+      const total = r1.modifiedCount + r2.modifiedCount + r3.modifiedCount
+      if (total > 0) {
+        console.log(`🔄 Migrated ${total} post(s) to status field`)
+      }
+    } catch (err) {
+      console.error("Migration error:", err.message)
+    }
+
     // ── Scheduled post publisher — runs every minute ──────────────
     if (schedule) {
       schedule.scheduleJob("* * * * *", async () => {
         try {
           const now = new Date()
           const result = await Post.updateMany(
-            { published: false, scheduledAt: { $lte: now, $ne: null } },
-            { $set: { published: true } }
+            { status: "scheduled", scheduledAt: { $lte: now, $ne: null } },
+            { $set: { status: "published" } }
           )
           if (result.modifiedCount > 0) {
             console.log(`📅 Published ${result.modifiedCount} scheduled post(s)`)

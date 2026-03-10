@@ -16,6 +16,7 @@ import {
   saveDraft,
   getUserDrafts,
   getScheduledPosts,
+  getMyStories,
 } from "../controllers/post.controller.js"
 import { protect, optionalAuth } from "../middleware/auth.middleware.js"
 
@@ -25,6 +26,7 @@ const router = express.Router()
 router.get("/trending", getTrending)
 router.get("/analytics", protect, getAnalytics)
 router.get("/recommended", protect, getRecommended)
+router.get("/stories/me", protect, getMyStories)
 router.get("/drafts", protect, getUserDrafts)
 router.get("/scheduled", protect, getScheduledPosts)
 router.get("/search", searchPosts)

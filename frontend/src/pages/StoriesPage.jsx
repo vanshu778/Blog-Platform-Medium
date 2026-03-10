@@ -1,50 +1,84 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { formatDistanceToNow, format } from 'date-fns'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import ConfirmModal from '../components/ui/ConfirmModal'
+import StoryCard from '../components/blog/StoryCard'
 
 const TABS = [
-  { key: 'drafts', label: 'Drafts' },
-  { key: 'scheduled', label: 'Scheduled' },
-  { key: 'published', label: 'Published' },
+  { key: 'drafts', status: 'draft', label: 'Drafts', emptyIcon: '📝', emptyText: 'You have no drafts.' },
+  { key: 'published', status: 'published', label: 'Published', emptyIcon: '📖', emptyText: "You haven't published any stories yet." },
+  { key: 'scheduled', status: 'scheduled', label: 'Scheduled', emptyIcon: '📅', emptyText: 'No scheduled stories.' },
+  { key: 'archived', status: 'archived', label: 'Archived', emptyIcon: '📦', emptyText: 'No archived stories.' },
 ]
+
+const PAGE_SIZE = 10
 
 export default function StoriesPage() {
   const { user } = useAuth()
   const [tab, setTab] = useState('drafts')
-  const [drafts, setDrafts] = useState([])
-  const [scheduled, setScheduled] = useState([])
-  const [published, setPublished] = useState([])
+  const [stories, setStories] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [counts, setCounts] = useState({ draft: 0, published: 0, scheduled: 0, archived: 0 })
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true)
-      // Fetch independently so one failure doesn't break all tabs
-      const [draftsRes, scheduledRes, publishedRes] = await Promise.allSettled([
-        api.get('/posts/drafts'),
-        api.get('/posts/scheduled'),
-        api.get(`/posts/user/${user.username}`),
-      ])
-      if (draftsRes.status === 'fulfilled') setDrafts(draftsRes.value.data.drafts || [])
-      if (scheduledRes.status === 'fulfilled') setScheduled(scheduledRes.value.data.posts || [])
-      if (publishedRes.status === 'fulfilled') setPublished(publishedRes.value.data.posts || [])
+  const currentTab = TABS.find((t) => t.key === tab)
+
+  // Fetch stories for current tab
+  const fetchStories = useCallback(async (status, pageNum) => {
+    setLoading(true)
+    try {
+      const res = await api.get(`/posts/stories/me?status=${status}&page=${pageNum}&limit=${PAGE_SIZE}`)
+      setStories(res.data.stories || [])
+      setTotal(res.data.total || 0)
+    } catch {
+      toast.error('Failed to load stories')
+      setStories([])
+      setTotal(0)
+    } finally {
       setLoading(false)
     }
-    if (user) fetchAll()
+  }, [])
+
+  // Fetch tab counts on mount
+  useEffect(() => {
+    if (!user) return
+    const fetchCounts = async () => {
+      const statuses = ['draft', 'published', 'scheduled', 'archived']
+      const results = await Promise.allSettled(
+        statuses.map((s) => api.get(`/posts/stories/me?status=${s}&limit=1`))
+      )
+      const newCounts = {}
+      statuses.forEach((s, i) => {
+        newCounts[s] = results[i].status === 'fulfilled' ? results[i].value.data.total || 0 : 0
+      })
+      setCounts(newCounts)
+    }
+    fetchCounts()
   }, [user])
+
+  // Fetch on tab or page change
+  useEffect(() => {
+    if (!user || !currentTab) return
+    fetchStories(currentTab.status, page)
+  }, [user, tab, page, fetchStories, currentTab])
+
+  // Reset page to 1 when switching tabs
+  const handleTabChange = (key) => {
+    setTab(key)
+    setPage(1)
+  }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
       await api.delete(`/posts/${deleteTarget}`)
-      setDrafts((prev) => prev.filter((p) => p._id !== deleteTarget))
-      setScheduled((prev) => prev.filter((p) => p._id !== deleteTarget))
-      setPublished((prev) => prev.filter((p) => p._id !== deleteTarget))
+      setStories((prev) => prev.filter((p) => p._id !== deleteTarget))
+      setTotal((prev) => prev - 1)
+      setCounts((prev) => ({ ...prev, [currentTab.status]: Math.max(0, (prev[currentTab.status] || 0) - 1) }))
       toast.success('Story deleted')
     } catch {
       toast.error('Failed to delete')
@@ -53,14 +87,23 @@ export default function StoriesPage() {
     }
   }
 
-  const currentItems =
-    tab === 'drafts' ? drafts : tab === 'scheduled' ? scheduled : published
-
-  const counts = {
-    drafts: drafts.length,
-    scheduled: scheduled.length,
-    published: published.length,
+  const handleArchive = async (id, moveTo = 'archived') => {
+    try {
+      await api.put(`/posts/${id}`, { status: moveTo })
+      setStories((prev) => prev.filter((p) => p._id !== id))
+      setTotal((prev) => prev - 1)
+      setCounts((prev) => ({
+        ...prev,
+        [currentTab.status]: Math.max(0, (prev[currentTab.status] || 0) - 1),
+        [moveTo]: (prev[moveTo] || 0) + 1,
+      }))
+      toast.success(moveTo === 'archived' ? 'Story archived' : 'Moved to drafts')
+    } catch {
+      toast.error('Failed to update story')
+    }
   }
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <div className="max-w-[900px] mx-auto px-6 pt-8 pb-16">
@@ -81,16 +124,14 @@ export default function StoriesPage() {
           {TABS.map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => handleTabChange(t.key)}
               className={`relative px-5 py-3 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? 'text-ink'
-                  : 'text-ink-muted hover:text-ink'
+                tab === t.key ? 'text-ink' : 'text-ink-muted hover:text-ink'
               }`}
             >
               {t.label}
-              {counts[t.key] > 0 && (
-                <span className="ml-1.5 text-ink-muted">{counts[t.key]}</span>
+              {counts[t.status] > 0 && (
+                <span className="ml-1.5 text-ink-muted">{counts[t.status]}</span>
               )}
               {tab === t.key && (
                 <span className="absolute bottom-0 left-0 right-0 h-[1px] bg-ink" />
@@ -112,19 +153,11 @@ export default function StoriesPage() {
             </div>
           ))}
         </div>
-      ) : currentItems.length === 0 ? (
+      ) : stories.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-5xl mb-4">
-            {tab === 'drafts' ? '📝' : tab === 'scheduled' ? '📅' : '📖'}
-          </p>
-          <p className="text-ink-muted">
-            {tab === 'drafts'
-              ? 'You have no drafts.'
-              : tab === 'scheduled'
-              ? 'No scheduled stories.'
-              : 'You haven\'t published any stories yet.'}
-          </p>
-          {tab !== 'published' && (
+          <p className="text-5xl mb-4">{currentTab?.emptyIcon}</p>
+          <p className="text-ink-muted">{currentTab?.emptyText}</p>
+          {tab !== 'published' && tab !== 'archived' && (
             <Link
               to="/write"
               className="inline-block mt-4 text-accent text-sm font-medium hover:underline"
@@ -134,16 +167,41 @@ export default function StoriesPage() {
           )}
         </div>
       ) : (
-        <div>
-          {currentItems.map((story) => (
-            <StoryRow
-              key={story._id}
-              story={story}
-              tab={tab}
-              onDelete={() => setDeleteTarget(story._id)}
-            />
-          ))}
-        </div>
+        <>
+          <div>
+            {stories.map((story) => (
+              <StoryCard
+                key={story._id}
+                story={story}
+                onDelete={(id) => setDeleteTarget(id)}
+                onArchive={handleArchive}
+              />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm rounded-md border border-border text-ink-muted hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-ink-muted px-3">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-sm rounded-md border border-border text-ink-muted hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmModal
@@ -154,104 +212,6 @@ export default function StoriesPage() {
         message="Are you sure? This action cannot be undone."
         confirmText="Delete"
       />
-    </div>
-  )
-}
-
-function StoryRow({ story, tab, onDelete }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-
-  const title = story.title || 'Untitled'
-  const excerpt = story.excerpt
-    ? story.excerpt.slice(0, 120) + (story.excerpt.length > 120 ? '…' : '')
-    : ''
-
-  const dateLabel =
-    tab === 'scheduled' && story.scheduledAt
-      ? `Scheduled for ${format(new Date(story.scheduledAt), 'MMM d, yyyy · h:mm a')}`
-      : `Last edited ${formatDistanceToNow(new Date(story.updatedAt || story.createdAt), { addSuffix: true })}`
-
-  const statusBadge =
-    tab === 'drafts' ? (
-      <span className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full">
-        Draft
-      </span>
-    ) : tab === 'scheduled' ? (
-      <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">
-        Scheduled
-      </span>
-    ) : (
-      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
-        Published
-      </span>
-    )
-
-  const editLink =
-    tab === 'published' ? `/edit/${story.slug}` : `/write?draft=${story._id}`
-
-  return (
-    <div className="flex items-start justify-between py-5 border-b border-border group">
-      <div className="flex-1 min-w-0 pr-4">
-        <Link to={editLink} className="block">
-          <h3 className="text-base font-semibold text-ink group-hover:text-accent transition-colors truncate">
-            {title}
-          </h3>
-          {excerpt && (
-            <p className="text-sm text-ink-muted mt-0.5 line-clamp-1">{excerpt}</p>
-          )}
-        </Link>
-        <div className="flex items-center gap-3 mt-2">
-          {statusBadge}
-          <span className="text-xs text-ink-muted">{dateLabel}</span>
-        </div>
-      </div>
-
-      {/* 3-dot menu */}
-      <div className="relative flex-shrink-0">
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-full text-ink-muted hover:bg-surface-alt hover:text-ink transition-colors"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="1.5" />
-            <circle cx="12" cy="12" r="1.5" />
-            <circle cx="12" cy="19" r="1.5" />
-          </svg>
-        </button>
-
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-full mt-1 w-36 bg-surface border border-border rounded-lg shadow-lg z-50 py-1">
-              <Link
-                to={editLink}
-                className="block px-4 py-2 text-sm text-ink hover:bg-surface-alt transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                Edit
-              </Link>
-              {tab === 'published' && (
-                <Link
-                  to={`/blog/${story.slug}`}
-                  className="block px-4 py-2 text-sm text-ink hover:bg-surface-alt transition-colors"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  View
-                </Link>
-              )}
-              <button
-                onClick={() => {
-                  setMenuOpen(false)
-                  onDelete()
-                }}
-                className="block w-full text-left px-4 py-2 text-sm text-danger hover:bg-surface-alt transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   )
 }

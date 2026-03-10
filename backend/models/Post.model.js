@@ -61,15 +61,24 @@ const postSchema = new Schema(
       celebrate: [{ type: Schema.Types.ObjectId, ref: "User" }],
     },
 
+    subtitle: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     // Auto-calculated reading time in minutes
     readTime: {
       type: Number,
       default: 1,
     },
 
-    published: {
-      type: Boolean,
-      default: true,
+    // Post lifecycle status
+    status: {
+      type: String,
+      enum: ["draft", "published", "scheduled", "archived"],
+      default: "published",
+      index: true,
     },
 
     // View count for trending
@@ -78,7 +87,7 @@ const postSchema = new Schema(
       default: 0,
     },
 
-    // Scheduled publishing — null means publish immediately
+    // Scheduled publishing date — only relevant when status === 'scheduled'
     scheduledAt: {
       type: Date,
       default: null,
@@ -110,5 +119,8 @@ postSchema.pre("save", function () {
     this.excerpt = plainText.slice(0, 160) + "..."
   }
 })
+
+// Compound index for stories dashboard queries
+postSchema.index({ author: 1, status: 1, updatedAt: -1 })
 
 export default model("Post", postSchema)

@@ -155,9 +155,9 @@ export default function WritePage() {
         // Update existing draft → publish or schedule it
         if (showSchedule && scheduledAt) {
           body.scheduledAt = new Date(scheduledAt).toISOString()
-          body.published = false
+          body.status = 'scheduled'
         } else {
-          body.published = true
+          body.status = 'published'
           body.scheduledAt = null
         }
         res = await api.put(`/posts/${draftId}`, body)
@@ -165,7 +165,7 @@ export default function WritePage() {
         // No draft — create new post
         if (showSchedule && scheduledAt) {
           body.scheduledAt = new Date(scheduledAt).toISOString()
-          body.published = false
+          body.status = 'scheduled'
         }
         res = await api.post('/posts', body)
       }
